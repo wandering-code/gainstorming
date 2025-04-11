@@ -1,0 +1,195 @@
+@media (max-width: 430px) {
+
+* {
+    box-sizing: border-box;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+
+    flex-direction: column;
+    min-height: 100vh;
+    height: 100vh;
+
+    font-family: 'Urbanist', sans-serif;
+    background-color: #ffffff;
+    color: #111;
+  }
+  
+  .container {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  h1 {
+    margin-bottom: 1.5rem;
+  }
+  
+/* Pantalla de inicio */
+
+  #email, #password {
+    width: 70%;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  
+  .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  
+  .button-container button {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    background-color: black;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s;
+    width: 45%;
+  }
+  
+  .button-container:hover {
+    background-color: #2c2c2c;
+  }
+
+  .button-container {
+    display: flex;
+    justify-content: space-around;
+    width: 70%;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+  }
+
+  /* Barra superior */
+
+  .barra-superior {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: #222;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    font-size: 18px;
+    z-index: 9999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  body {
+    padding-top: 60px; /* para que el contenido no quede debajo de la barra */
+  }
+  
+  .oculto {
+    display: none !important;
+  }
+
+  /* Menú flotante */
+
+  .menu-flotante {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    align-items: flex-end !important;
+    gap: 10px !important;
+    z-index: 9999 !important;
+  }
+
+  .boton-principal {
+    width: 60px;
+    height: 60px;
+    line-height: 60px;
+    font-size: 28px;
+    text-align: center;
+    border-radius: 50%;
+    background-color: #333;
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    padding: 0;
+  }
+  
+  .opciones {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+  
+  .opciones.activo {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  
+  .opciones button {
+    background-color: #ffffff;
+    color: #000000; /* Asegura que el texto sea visible */
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    width: 150px;
+    text-align: center;
+  }
+  
+  
+  /* Vista de ajustes */
+  
+  #vista-ajustes {
+    width: 90%;
+    height: auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  #vista-ajustes-botones {
+    display: flex;
+    justify-content: center;
+    width: auto;
+  }
+
+  #vista-ajustes button {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    background-color: black;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+}

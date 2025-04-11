@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gainstorming</title>
+    <link rel="stylesheet" href="../styles/pc.css">
+    <link rel="stylesheet" href="../styles/phone.css">
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600&display=swap" rel="stylesheet">
+    <script src="../scripts/main.js"></script>
+    <script>
+
+    </script>
+</head>
+<body>
+    <header class="barra-superior">
+        <span class="nombre-app">GAINSTORMING</span>
+        <span class="nombre-seccion" id="nombreSeccion">Principal</span>
+    </header>
+
+    <div id="vista-entrenamiento" class="vista oculto">
+        Vista de entrenamiento
+    </div>
+
+    <div id="vista-rutina" class="vista oculto">
+        Vista de rutina
+    </div>
+
+    <div id="vista-medidas" class="vista oculto">
+        Vista de medidas
+    </div>
+
+    <div id="vista-ejercicios" class="vista oculto">
+        Vista de ejercicios
+    </div>
+
+    <div id="vista-ajustes" class="vista oculto">
+        <div id="vista-ajustes-botones">
+            <button onclick="logout()">Cerrar sesión</button>
+        </div>
+    </div>
+
+
+    <div class="menu-flotante">
+        <button class="boton-principal" onclick="toggleMenu()">＋</button>
+        <div class="opciones" id="menuOpciones">
+            <button onclick="changeView('vista-entrenamiento', this)">Entrenamiento</button>
+            <button onclick="changeView('vista-rutina', this)">Rutina</button>
+            <button onclick="changeView('vista-medidas', this)">Medidas</button>
+            <button onclick="changeView('vista-ejercicios', this)">Ejercicios</button>
+            <button onclick="changeView('vista-ajustes', this)">Ajustes</button>
+        </div>
+    </div>
+      
+      
+    <script type="module" src="../scripts/dataBaseManager.js"></script>
+
+    <script type="module">
+        import { auth } from "../scripts/dataBaseManager.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+        onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            window.location.href = "../index.html";
+        }
+        });
+    </script>
+</body>
+</html>
