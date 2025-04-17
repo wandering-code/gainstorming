@@ -10,7 +10,7 @@
     font-family: sans-serif;
     background: #f5f5f5;
     display: flex;
-    justify-content: center;
+    
     align-items: center;
     height: 100vh;
 
@@ -37,7 +37,24 @@
     margin-bottom: 1.5rem;
   }
   
-/* Pantalla de inicio */
+  /* Pantalla de inicio */
+
+  #body-index {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    flex-direction: column;
+    min-height: 100vh;
+    height: 100vh;
+    font-family: 'Urbanist', sans-serif;
+    background-color: #ffffff;
+    color: #111;
+  }
 
   #email, #password {
     width: 70%;
@@ -47,14 +64,14 @@
     border-radius: 8px;
     font-size: 1rem;
   }
-  
+
   .button-group {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     margin-top: 1rem;
   }
-  
+
   .button-container button {
     padding: 0.8rem;
     border: none;
@@ -65,10 +82,6 @@
     cursor: pointer;
     transition: background 0.3s;
     width: 45%;
-  }
-  
-  .button-container:hover {
-    background-color: #2c2c2c;
   }
 
   .button-container {
@@ -97,11 +110,11 @@
     z-index: 9999;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
-  
+
   body {
     padding-top: 60px; /* para que el contenido no quede debajo de la barra */
   }
-  
+
   .oculto {
     display: none !important;
   }
@@ -133,7 +146,7 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     padding: 0;
   }
-  
+
   .opciones {
     display: flex;
     flex-direction: column;
@@ -146,14 +159,14 @@
     transition: all 0.3s ease;
     pointer-events: none;
   }
-  
+
   .opciones.activo {
     max-height: 500px;
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
   }
-  
+
   .opciones button {
     background-color: #ffffff;
     color: #000000; /* Asegura que el texto sea visible */
@@ -166,10 +179,10 @@
     width: 150px;
     text-align: center;
   }
-  
-  
+
+
   /* Vista de ajustes */
-  
+
   #vista-ajustes {
     width: 90%;
     height: auto;
@@ -192,4 +205,158 @@
     font-size: 1rem;
     cursor: pointer;
   }
+
+  /* Vista de medidas */
+
+  #vista-medidas {
+    width: 100%;
+    height: auto;
+    justify-content: center;
+  }
+
+  #vista-medidas button {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    background-color: black;
+    color: white;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  #vista-medidas #input-fecha-medidas {
+    width: 60%;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  #vista-medidas #input-valor-medidas {
+    width: 30%;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  #vista-medidas .medidas-button-container {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+  }
+
+  #boton-guardar-medida {
+    width: 90%;
+  }
+
+  .medidas-input-section {
+    position: sticky;
+    top: 0;
+    background-color: #f0f0f0;
+    padding: 1rem;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .medidas-input-section h2 {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .medidas-button-container input {
+    padding: 0.6rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+
+  #boton-guardar-medida {
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    background-color: #0066ff;
+    color: white;
+    cursor: pointer;
+  }
+
+  /* Contenedor general del historial */
+  .registro-section {
+    max-width: 768px; /* similar a max-w-screen-md */
+    margin: 0 auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Título centrado */
+  .registro-section h2 {
+    text-align: center;
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Mensaje de "No hay medidas" centrado */
+  #listaMedidas p {
+    text-align: center;
+    color: #6b7280; /* gris suave */
+    margin: 1.5rem 0;
+  }
+
+  /* Tabla completa */
+  #listaMedidas table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem; /* text-sm */
+    border: 1px solid #d1d5db; /* gris claro */
+    border-radius: 0.375rem;
+    overflow: hidden;
+  }
+
+  /* Cabecera de tabla */
+  #listaMedidas thead tr {
+    background-color: #e5e7eb; /* gris claro */
+    color: #374151; /* gris oscuro */
+    text-align: left;
+  }
+
+  /* Celdas */
+  #listaMedidas th,
+  #listaMedidas td {
+    padding: 0.5rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  /* Filas */
+  #listaMedidas tbody tr:hover {
+    background-color: #f9fafb; /* gris muy claro al pasar el ratón */
+  }
+
+  /* Botón de eliminar */
+  .boton-eliminar {
+    background-color: #ef4444;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .boton-eliminar:hover {
+    background-color: #dc2626;
+  }
+
+
+
+
 }

@@ -1,5 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getFirestore, doc, collection, addDoc, setDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+import { renderizarTablaMedidas } from "./main.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDn4D6i9ETBbIvhcxhyzJcnK_CiSFMEjqk",
@@ -23,6 +26,15 @@ const erroresFirebase = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Solo para desarrollo:
+window.auth = auth;
+window.db = db;
+window.getDocs = getDocs;
+window.collection = collection;
+
+// #region Funciones de sesión
 
 window.signup = () => {
   const email = document.getElementById("email").value;
@@ -70,5 +82,80 @@ window.logout = () => {
       alert("Error al cerrar sesión");
     });
 }
+
+// #endregion
+
+
+// #region Funciones de almacenamiento y extracción de datos
+
+export async function guardarMedida() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  if (!auth.currentUser) {
+    alert("Usuario no autenticado");
+    return;
+  }
+
+  var fecha = document.getElementById("input-fecha-medidas").value;
+  var valor = document.getElementById("input-valor-medidas").value;
+
+  if (fecha == "") {
+    alert("El campo fecha es obligatorio");
+    return;
+  } else if (valor == "") {
+    alert("El campo valor es obligatorio");
+    return;
+  }
+
+  const input = document.getElementById("input-valor-medidas");
+  const valorAux = parseFloat(input.value);
+
+  if (valorAux < input.min || valorAux > input.max) {
+    alert(`El peso debe estar entre ${input.min} y ${input.max}`);
+    return;
+  }
+
+  console.log(fecha + " y " + valor);
+
+  const medidasRef = collection(db, `usuarios/${user.uid}/medidas`);
+  const docRef = await addDoc(medidasRef, {
+    fecha: fecha,
+    valor: valor,
+  });
+
+  console.log("Medida guardada con ID:", docRef.id);
+
+  document.getElementById("input-fecha-medidas").value = "";
+  document.getElementById("input-valor-medidas").value = "";
+
+  renderizarTablaMedidas();
+}
+
+export async function obtenerMedidas() {
+  const user = auth.currentUser;
+  if (!user) return [];
+
+  const medidasRef = collection(db, `usuarios/${user.uid}/medidas`);
+  const snapshot = await getDocs(medidasRef);
+
+  const medidas = snapshot.docs.map(doc => ({
+    id: doc.id,
+    fecha: doc.data().fecha,
+    valor: doc.data().valor
+  }));
+
+  return medidas;
+}
+
+export async function eliminarMedida(id) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const medidaRef = doc(db, `usuarios/${user.uid}/medidas/${id}`);
+  await deleteDoc(medidaRef);
+}
+
+// #endregion
 
 export { auth };

@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="../styles/pc.css">
     <link rel="stylesheet" href="../styles/phone.css">
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600&display=swap" rel="stylesheet">
-    <script src="../scripts/main.js"></script>
     <script>
 
     </script>
@@ -22,12 +21,25 @@
         Vista de entrenamiento
     </div>
 
-    <div id="vista-rutina" class="vista oculto">
+    <div id="vista-rutinas" class="vista oculto">
         Vista de rutina
     </div>
 
     <div id="vista-medidas" class="vista oculto">
-        Vista de medidas
+        <section class="medidas-input-section">
+            <h2>Registrar medida</h2>
+            <div class="medidas-button-container">
+                <input type="date" id="input-fecha-medidas" />
+                <input type="number" step="0.01" id="input-valor-medidas" placeholder="Peso" min="40" max="200"/>
+            </div>
+            <button id="boton-guardar-medida">Guardar</button>
+        </section>
+
+        <section class="registro-section">
+            <h2>Historial</h2>
+            <div id="listaMedidas">
+            </div>
+        </section>
     </div>
 
     <div id="vista-ejercicios" class="vista oculto">
@@ -36,34 +48,25 @@
 
     <div id="vista-ajustes" class="vista oculto">
         <div id="vista-ajustes-botones">
-            <button onclick="logout()">Cerrar sesión</button>
+            <button id="boton-cerrar-sesion">Cerrar sesión</button>
         </div>
     </div>
 
 
     <div class="menu-flotante">
-        <button class="boton-principal" onclick="toggleMenu()">＋</button>
+        <button class="boton-principal" id="boton-menu-desplegable">＋</button>
         <div class="opciones" id="menuOpciones">
-            <button onclick="changeView('vista-entrenamiento', this)">Entrenamiento</button>
-            <button onclick="changeView('vista-rutina', this)">Rutina</button>
-            <button onclick="changeView('vista-medidas', this)">Medidas</button>
-            <button onclick="changeView('vista-ejercicios', this)">Ejercicios</button>
-            <button onclick="changeView('vista-ajustes', this)">Ajustes</button>
+            <button id="boton-cargar-vista-entrenamiento">Entrenamiento</button>
+            <button id="boton-cargar-vista-rutina">Rutina</button>
+            <button id="boton-cargar-vista-medidas">Medidas</button>
+            <button id="boton-cargar-vista-ejercicios">Ejercicios</button>
+            <button id="boton-cargar-vista-ajustes">Ajustes</button>
         </div>
     </div>
       
       
     <script type="module" src="../scripts/dataBaseManager.js"></script>
-
-    <script type="module">
-        import { auth } from "../scripts/dataBaseManager.js";
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-
-        onAuthStateChanged(auth, (user) => {
-        if (!user) {
-            window.location.href = "../index.html";
-        }
-        });
-    </script>
+    <script type="module" src="../scripts/sessionManager.js"></script>
+    <script type="module" src="../scripts/main.js"></script>
 </body>
 </html>
