@@ -39,6 +39,12 @@ function iniciarEjercicios() {
 function menuDesplegable() {
   const menu = document.getElementById("menuOpciones");
   menu.classList.toggle("activo");
+
+  if (menu.classList.contains("activo")) {
+    document.getElementById('overlay').classList.remove('oculto');
+  } else {
+    document.getElementById('overlay').classList.add('oculto');
+  }
 }
 
 function cargarVistaEntrenamiento() {
@@ -63,8 +69,9 @@ function cargarVistaAjustes() {
   cambiarVista("vista-ajustes")
 }
 
-function cambiarVista(vista) {
+function cambiarVista(vista, callback = null) {
   var titulo;
+  const loader = document.getElementById('loader');
 
   switch (vista) {
     case "vista-entrenamiento":
@@ -72,33 +79,43 @@ function cambiarVista(vista) {
       break;
     case "vista-rutinas":
       titulo = "Rutinas";
-    break;
+      break;
     case "vista-medidas":
-      titulo = "Medidas"
-    break;
+      titulo = "Medidas";
+      break;
     case "vista-ejercicios":
-      titulo = "Ejercicios"
-    break;
+      titulo = "Ejercicios";
+      break;
     case "vista-ajustes":
-      titulo = "Ajustes"
-    break;
+      titulo = "Ajustes";
+      break;
     default:
       titulo = "Principal";
-    break;
+      break;
   }
 
-  document.getElementById("nombreSeccion").textContent = titulo;
+  loader.classList.remove('oculto');
 
-  document.querySelectorAll('.vista').forEach(el => {
-    if (el.id !== vista) {
-      el.classList.add('oculto');
-    } else {
-      el.classList.remove('oculto');
+  setTimeout(() => {
+    document.getElementById("nombreSeccion").textContent = titulo;
+
+    document.querySelectorAll('.vista').forEach(el => {
+      if (el.id !== vista) {
+        el.classList.add('oculto');
+      } else {
+        el.classList.remove('oculto');
+      }
+    });
+
+    document.getElementById("menuOpciones").classList.remove("activo");
+    document.getElementById('overlay').classList.add('oculto');
+
+    if (typeof callback === 'function') {
+      callback();
     }
-  });
 
-  const menu = document.getElementById("menuOpciones");
-  menu.classList.remove("activo");
+    loader.classList.add('oculto');
+  }, 300);
 }
 
 
@@ -202,6 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('boton-cargar-vista-ajustes')?.addEventListener('click', cargarVistaAjustes);
 
   document.getElementById('boton-guardar-medida')?.addEventListener('click', guardarMedida);
+  
+
 });
 
 // Cierra el menú si haces clic fuera
@@ -209,9 +228,45 @@ window.addEventListener("click", (e) => {
   const menu = document.getElementById("menuOpciones");
   const boton = document.querySelector(".boton-principal");
 
-  if (!menu.contains(e.target) && !boton.contains(e.target)) {
+  if (menu && !menu.contains(e.target) && !boton.contains(e.target)) {
       menu.classList.remove("activo");
+      document.getElementById('overlay').classList.add('oculto');
   }
 });
 
 export { renderizarTablaMedidas };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let orientacionAnterior = window.innerWidth > window.innerHeight ? 'horizontal' : 'vertical';
+
+function comprobarOrientacion() {
+  const esHorizontal = window.innerWidth > window.innerHeight;
+  const orientacionActual = esHorizontal ? 'horizontal' : 'vertical';
+
+  // Lógica de visibilidad
+  
+  document.getElementById("container-principal").classList.toggle("oculto", esHorizontal);
+
+  // Detectar cambio de orientación
+  if (orientacionActual !== orientacionAnterior) {
+    document.getElementById("contenedor-temporal").classList.toggle("oculto", !esHorizontal);
+  }
+
+  orientacionAnterior = orientacionActual;
+}
+
+// Ejecutar al cargar y al rotar
+window.addEventListener("load", comprobarOrientacion);
+window.addEventListener("resize", comprobarOrientacion);

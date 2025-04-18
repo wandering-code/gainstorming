@@ -97,8 +97,8 @@ export async function guardarMedida() {
     return;
   }
 
-  var fecha = document.getElementById("input-fecha-medidas").value;
-  var valor = document.getElementById("input-valor-medidas").value;
+  const fecha = document.getElementById("input-fecha-medidas").value;
+  const valor = document.getElementById("input-valor-medidas").value;
 
   if (fecha == "") {
     alert("El campo fecha es obligatorio");
@@ -116,21 +116,29 @@ export async function guardarMedida() {
     return;
   }
 
-  console.log(fecha + " y " + valor);
+  const loader = document.getElementById('loader');
+  loader.classList.remove('oculto');
 
-  const medidasRef = collection(db, `usuarios/${user.uid}/medidas`);
-  const docRef = await addDoc(medidasRef, {
-    fecha: fecha,
-    valor: valor,
-  });
+  try {
+    const medidasRef = collection(db, `usuarios/${user.uid}/medidas`);
+    const docRef = await addDoc(medidasRef, {
+      fecha: fecha,
+      valor: valor,
+    });
 
-  console.log("Medida guardada con ID:", docRef.id);
+    console.log("Medida guardada con ID:", docRef.id);
 
-  document.getElementById("input-fecha-medidas").value = "";
-  document.getElementById("input-valor-medidas").value = "";
+    document.getElementById("input-fecha-medidas").value = "";
+    document.getElementById("input-valor-medidas").value = "";
 
-  renderizarTablaMedidas();
+    renderizarTablaMedidas();
+  } catch (error) {
+    console.error("Error al guardar medida:", error);
+  } finally {
+    loader.classList.add('oculto');
+  }
 }
+
 
 export async function obtenerMedidas() {
   const user = auth.currentUser;
@@ -152,8 +160,17 @@ export async function eliminarMedida(id) {
   const user = auth.currentUser;
   if (!user) return;
 
-  const medidaRef = doc(db, `usuarios/${user.uid}/medidas/${id}`);
-  await deleteDoc(medidaRef);
+  const loader = document.getElementById('loader');
+  loader.classList.remove('oculto');
+
+  try {
+    const medidaRef = doc(db, `usuarios/${user.uid}/medidas/${id}`);
+    await deleteDoc(medidaRef);
+  } catch (error) {
+    console.error('Error al eliminar medida:', error);
+  } finally {
+    loader.classList.add('oculto');
+  }
 }
 
 // #endregion

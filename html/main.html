@@ -12,58 +12,69 @@
     </script>
 </head>
 <body>
-    <header class="barra-superior">
-        <span class="nombre-app">GAINSTORMING</span>
-        <span class="nombre-seccion" id="nombreSeccion">Principal</span>
-    </header>
-
-    <div id="vista-entrenamiento" class="vista oculto">
-        Vista de entrenamiento
-    </div>
-
-    <div id="vista-rutinas" class="vista oculto">
-        Vista de rutina
-    </div>
-
-    <div id="vista-medidas" class="vista oculto">
-        <section class="medidas-input-section">
-            <h2>Registrar medida</h2>
-            <div class="medidas-button-container">
-                <input type="date" id="input-fecha-medidas" />
-                <input type="number" step="0.01" id="input-valor-medidas" placeholder="Peso" min="40" max="200"/>
+    <div id="container-principal">
+        <header class="barra-superior">
+            <span class="nombre-app">GAINSTORMING</span>
+            <span class="nombre-seccion" id="nombreSeccion">Principal</span>
+        </header>
+    
+        <div id="vista-entrenamiento" class="vista oculto">
+            Vista de entrenamiento
+        </div>
+    
+        <div id="vista-rutinas" class="vista oculto">
+            Vista de rutina
+        </div>
+    
+        <div id="vista-medidas" class="vista oculto">
+            <section class="medidas-input-section">
+                <h2>Registrar medida</h2>
+                <div class="medidas-button-container">
+                    <input type="date" id="input-fecha-medidas" />
+                    <input type="number" step="0.01" id="input-valor-medidas" placeholder="Peso" min="40" max="200"/>
+                </div>
+                <button id="boton-guardar-medida">Guardar</button>
+            </section>
+    
+            <section class="registro-section">
+                <h2>Historial</h2>
+                <div id="listaMedidas">
+                </div>
+            </section>
+        </div>
+    
+        <div id="vista-ejercicios" class="vista oculto">
+            Vista de ejercicios
+        </div>
+    
+        <div id="vista-ajustes" class="vista oculto">
+            <div id="vista-ajustes-botones">
+                <button id="boton-cerrar-sesion">Cerrar sesión</button>
             </div>
-            <button id="boton-guardar-medida">Guardar</button>
-        </section>
-
-        <section class="registro-section">
-            <h2>Historial</h2>
-            <div id="listaMedidas">
+        </div>
+    
+    
+        <div class="menu-flotante">
+            <button class="boton-principal" id="boton-menu-desplegable">＋</button>
+            <div class="opciones" id="menuOpciones">
+                <button id="boton-cargar-vista-entrenamiento">Entrenamiento</button>
+                <button id="boton-cargar-vista-rutina">Rutina</button>
+                <button id="boton-cargar-vista-medidas">Medidas</button>
+                <button id="boton-cargar-vista-ejercicios">Ejercicios</button>
+                <button id="boton-cargar-vista-ajustes">Ajustes</button>
             </div>
-        </section>
-    </div>
-
-    <div id="vista-ejercicios" class="vista oculto">
-        Vista de ejercicios
-    </div>
-
-    <div id="vista-ajustes" class="vista oculto">
-        <div id="vista-ajustes-botones">
-            <button id="boton-cerrar-sesion">Cerrar sesión</button>
         </div>
     </div>
-
-
-    <div class="menu-flotante">
-        <button class="boton-principal" id="boton-menu-desplegable">＋</button>
-        <div class="opciones" id="menuOpciones">
-            <button id="boton-cargar-vista-entrenamiento">Entrenamiento</button>
-            <button id="boton-cargar-vista-rutina">Rutina</button>
-            <button id="boton-cargar-vista-medidas">Medidas</button>
-            <button id="boton-cargar-vista-ejercicios">Ejercicios</button>
-            <button id="boton-cargar-vista-ajustes">Ajustes</button>
-        </div>
+    
+    <div id="loader" class="oculto">
+        <img src="../images/disco_carga.png" alt="Cargando" />
     </div>
-      
+
+    <div id="contenedor-temporal">
+        <p>Esta aplicación está diseñada para móviles. Por favor, accede desde un dispositivo móvil en modo vertical.</p>
+    </div>
+
+    <div id="overlay" class="oculto"></div>
       
     <script type="module" src="../scripts/dataBaseManager.js"></script>
     <script type="module" src="../scripts/sessionManager.js"></script>

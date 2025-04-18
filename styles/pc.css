@@ -1,0 +1,14 @@
+/* Mostrar solo si el ancho es mayor a 430px */
+@media (min-width: 431px) {
+    #container-principal {
+      display: none;
+    }
+  
+    #contenedor-index {
+      display: none;
+    }
+
+    .oculto {
+        display: none !important;
+    }
+}

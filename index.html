@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="styles/phone.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body id="body-index">
+<body>
+  <div id="contenedor-index">
     <h1>GAINSTORMING</h1>
     <input type="email" id="email" placeholder="Correo" value="danielgarciaalbert@icloud.com"/>
     <input type="password" id="password" placeholder="Contraseña" value="Daniel1967"/>
@@ -17,6 +18,15 @@
         <button onclick="signup()">Registrarse</button>
         <button onclick="login()">Iniciar sesión</button>
     </div>
+  </div>
+
+  <div id="contenedor-temporal">
+    <p>Esta aplicación está diseñada para móviles. Por favor, accede desde un dispositivo móvil.</p>
+  </div>
+
+  <div id="bloqueo-horizontal" class="oculto">
+    <p>Por favor, usa la aplicación en modo vertical.</p>
+  </div>
   
     <script type="module" src="scripts/dataBaseManager.js"></script>
 
