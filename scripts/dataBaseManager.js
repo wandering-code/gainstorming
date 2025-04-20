@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { getFirestore, doc, collection, addDoc, setDoc, getDocs, getDoc, deleteDoc, query, collectionGroup, where } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-import { renderizarTablaMedidas } from "./main.js";
+import { renderizarTablaMedidas, calcularTMB, obtenerFactorActividad, ajustarKcalPorObjetivo, calcularMacros, cargarVista } from "./main.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDn4D6i9ETBbIvhcxhyzJcnK_CiSFMEjqk",
@@ -79,6 +79,9 @@ window.login = async () => {
 
   let email = entrada;
 
+  const loader = document.getElementById('loader');
+  loader.classList.remove('oculto');
+
   // Si no contiene "@" asumimos que es un nombre de usuario
   if (!entrada.includes("@")) {
     const q = query(
@@ -89,6 +92,7 @@ window.login = async () => {
 
     if (snapshot.empty) {
       alert("Nombre de usuario no encontrado.");
+      loader.classList.add('oculto');
       return;
     }
 
@@ -99,6 +103,7 @@ window.login = async () => {
 
     if (!userData || !userData.email) {
       alert("No se ha podido recuperar el email asociado.");
+      loader.classList.add('oculto');
       return;
     }
 
@@ -108,6 +113,7 @@ window.login = async () => {
   // Login normal con email y contraseña
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
+      loader.classList.add('oculto');
       window.location.href = "html/main.html";
     })
     .catch((error) => {
@@ -196,7 +202,6 @@ export async function guardarMedida() {
   }
 }
 
-
 export async function obtenerMedidas() {
   const user = auth.currentUser;
   if (!user) return [];
@@ -241,12 +246,41 @@ export async function actualizarPeso(nuevoPeso) {
 
   const dataActual = snapshot.data();
 
-  await setDoc(docRef, {
-    ...dataActual,
-    peso: nuevoPeso
-  });
-}
+  let modificarRecomendacionNutricional = false;
 
+  let tmb, factor, kcalTotales, macros, kcalDiarias, proteinas, carbohidratos, grasas;
+
+  if (dataActual.peso && dataActual.edad && dataActual.altura && 
+    dataActual.nivelActividad && dataActual.objetivo && dataActual.tipoDieta) {
+      modificarRecomendacionNutricional = dataActual.recomendacionNutricionalAutomatica;
+
+      if (modificarRecomendacionNutricional) {
+        tmb = calcularTMB(parseFloat(dataActual.peso), parseFloat(dataActual.altura), parseInt(dataActual.edad));
+        factor = obtenerFactorActividad(dataActual.nivelActividad);
+        kcalTotales = ajustarKcalPorObjetivo(tmb * factor, dataActual.objetivo);
+        macros = calcularMacros(parseFloat(dataActual.peso), kcalTotales, dataActual.tipoDieta);
+
+        kcalDiarias = Math.round(kcalTotales);
+        proteinas = macros.proteinas;
+        carbohidratos = macros.carbohidratos;
+        grasas = macros.grasas;
+      }
+  }
+
+  if (modificarRecomendacionNutricional) {
+    await setDoc(docRef, {
+      peso: nuevoPeso,
+      kcalDiarias: kcalDiarias,
+      proteinas: proteinas,
+      carbohidratos: carbohidratos,
+      grasas: grasas
+    }, { merge: true });
+  } else {
+    await setDoc(docRef, {
+      peso: nuevoPeso
+    }, { merge: true });
+  }
+}
 
 export async function guardarDatosPersonales() {
   const user = auth.currentUser;
@@ -344,7 +378,10 @@ export async function obtenerDatosPersonales() {
   const datosPersonalesRef = doc(db, `usuarios/${user.uid}/datos-personales/perfil`);
   const snapshot = await getDoc(datosPersonalesRef);
 
-  if (!snapshot.exists()) return null;
+  if (!snapshot.exists()) {
+    console.log("Snapshot no existe...")
+    return null;
+  } 
 
   const data = snapshot.data();
 
@@ -367,7 +404,56 @@ export async function obtenerDatosPersonales() {
   };
 }
 
+export async function obtenerComidas(fecha = null) {
+  const user = auth.currentUser;
+  if (!user) return [];
+
+  if (fecha) {
+    const docRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
+    const snapshot = await getDoc(docRef);
+
+    if (!snapshot.exists()) return null;
+
+    const data = snapshot.data();
+    return {
+      id: snapshot.id,
+      comidasActivas: data.comidasActivas,
+      ...Object.fromEntries(
+        Object.entries(data).filter(([key]) => key.startsWith("comida"))
+      ),
+      resumenDiario: data.resumenDiario || null
+    };
+  } else {
+    const colRef = collection(db, `usuarios/${user.uid}/comidas`);
+    const snapshot = await getDocs(colRef);
+
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        comidasActivas: data.comidasActivas,
+        ...Object.fromEntries(
+          Object.entries(data).filter(([key]) => key.startsWith("comida"))
+        ),
+        resumenDiario: data.resumenDiario || null
+      };
+    });
+  }
+}
+
 // #endregion
+
+ // asegúrate de tener este import arriba
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    const vistaGuardada = localStorage.getItem("ultima-vista") || "";
+    cargarVista(vistaGuardada);
+  } else {
+    console.warn("Usuario no autenticado");
+    // podrías redirigir a login aquí si hace falta
+  }
+});
 
 export { auth };
 

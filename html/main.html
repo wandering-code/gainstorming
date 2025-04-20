@@ -7,9 +7,6 @@
     <link rel="stylesheet" href="../styles/pc.css">
     <link rel="stylesheet" href="../styles/phone.css">
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600&display=swap" rel="stylesheet">
-    <script>
-
-    </script>
 </head>
 <body>
     <div id="container-principal">
@@ -17,7 +14,7 @@
             <span class="nombre-app">GAINSTORMING</span>
             <span class="nombre-seccion" id="nombre-seccion">Principal</span>
         </header>
-    
+
         <div id="vista-entrenamiento" class="vista oculto">
             Vista de entrenamiento
         </div>
@@ -48,7 +45,48 @@
         </div>
     
         <div id="vista-comidas" class="vista oculto">
-            Vista de comidas
+            <div id="selector-dia" class="selector-dia">
+                <div class="fila-dias">
+                  <button id="dia-anterior">◀</button>
+              
+                  <div class="selector-dia-clickable">
+                    <span id="texto-dia">Hoy</span>
+                    <input type="date" id="selector-calendario" />
+                  </div>
+              
+                  <button id="dia-siguiente">▶</button>
+                </div>
+            </div>
+            
+            <div id="resumen-macros" class="resumen-macros">
+                <div class="grupo-macro">
+                  <span class="macro-label">Carbohidratos</span>
+                  <div class="macro-barra">
+                    <div class="macro-fill" id="barra-carbohidratos"></div>
+                  </div>
+                  <span class="macro-dato" id="carbohidratos-dia">0 / 0 g</span>
+                </div>
+                <div class="grupo-macro">
+                  <span class="macro-label">Proteínas</span>
+                  <div class="macro-barra">
+                    <div class="macro-fill" id="barra-proteinas"></div>
+                  </div>
+                  <span class="macro-dato" id="proteinas-dia">0 / 0 g</span>
+                </div>
+                <div class="grupo-macro">
+                  <span class="macro-label">Grasas</span>
+                  <div class="macro-barra">
+                    <div class="macro-fill" id="barra-grasas"></div>
+                  </div>
+                  <span class="macro-dato" id="grasas-dia">0 / 0 g</span>
+                </div>
+                <div class="grupo-kcal">
+                  <span class="kcal-label">Kcal totales</span>
+                  <span class="kcal-dato" id="kcal-dia">0 / 0 kcal</span>
+                </div>
+            </div>
+              
+            <div id="contenedor-comidas"></div>
         </div>
 
         <div id="vista-ajustes" class="vista oculto">
@@ -163,10 +201,10 @@
         <div class="menu-flotante">
             <button class="boton-principal" id="boton-menu-desplegable">＋</button>
             <div class="opciones" id="contenedor-menu-principal">
-                <button id="boton-cargar-vista-entrenamiento">Entrenamiento</button>
-                <button id="boton-cargar-vista-rutina">Rutinas</button>
+                <!-- <button id="boton-cargar-vista-entrenamiento">Entrenamiento</button> -->
+                <!-- <button id="boton-cargar-vista-rutina">Rutinas</button> -->
                 <button id="boton-cargar-vista-medidas">Medidas</button>
-                <button id="boton-cargar-vista-ejercicios">Ejercicios</button>
+                <!-- <button id="boton-cargar-vista-ejercicios">Ejercicios</button> -->
                 <button id="boton-cargar-vista-comidas">Comidas</button>
                 <button id="boton-cargar-vista-ajustes">Ajustes</button>
             </div>
@@ -182,7 +220,24 @@
     </div>
 
     <div id="overlay" class="oculto"></div>
+
+    <div id="modal-registro-alimento" class="modal-registrar oculto">
+        <div class="modal-contenido">
+          <p class="modal-titulo">¿Cómo quieres añadir el alimento?</p>
+          <div class="modal-opciones">
+            <button id="btn-escanear">Escanear alimento</button>
+            <button id="btn-manual">Añadir manualmente</button>
+          </div>
+          <button id="btn-cerrar-modal" class="modal-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="scanner-container" class="oculto">
+        <div id="scanner"></div>
+        <button id="cerrar-scanner" class="boton-cancelar">Cancelar</button>
+      </div>
       
+    <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
     <script type="module" src="../scripts/dataBaseManager.js"></script>
     <script type="module" src="../scripts/sessionManager.js"></script>
     <script type="module" src="../scripts/main.js"></script>

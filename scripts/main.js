@@ -1,10 +1,13 @@
-import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, guardarDatosPersonales } from '../scripts/dataBaseManager.js';
+import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, guardarDatosPersonales, obtenerComidas } from '../scripts/dataBaseManager.js';
+
+const Quagga = window.Quagga;
 
 var camposDatosPersonales = {}
 var validacionActiva = false;
 
 window.addEventListener("DOMContentLoaded", function () {
-  cargarVistaAjustes();
+  // cargarVistaAjustes();
+  // cargarVista(localStorage.getItem("ultima-vista") || "");
 
   camposDatosPersonales = {
     nombreUsuario: document.getElementById("input-nombre-usuario"),
@@ -66,42 +69,6 @@ function limpiarErrores(campos) {
   });
 }
 
-
-function mostrarVista(idVista) {
-  // Oculta todas las vistas
-  document.querySelectorAll('.vista').forEach(v => v.classList.add('oculto'));
-
-  // Muestra la vista seleccionada
-  const vista = document.getElementById(idVista);
-  vista.classList.remove('oculto');
-
-  // Ejecuta funciones según la vista
-  switch (idVista) {
-    case 'vista-medidas':
-      iniciarMedidas();
-      break;
-    case 'vista-rutina':
-      iniciarRutina();
-      break;
-    case 'vista-ejercicios':
-      iniciarEjercicios();
-      break;
-  }
-}
-
-// Funciones específicas para cada vista
-function iniciarMedidas() {
-  console.log('Vista de medidas cargada');
-}
-
-function iniciarRutina() {
-  console.log('Vista de rutina cargada');
-}
-
-function iniciarEjercicios() {
-  console.log('Vista de ejercicios cargada');
-}
-
 // Mostrar menú desplegable
 function menuDesplegable() {
   const menu = document.getElementById("contenedor-menu-principal");
@@ -111,6 +78,31 @@ function menuDesplegable() {
     document.getElementById('overlay').classList.remove('oculto');
   } else {
     document.getElementById('overlay').classList.add('oculto');
+  }
+}
+
+export function cargarVista(vista) {
+  switch (vista) {
+    case "vista-entrenamiento":
+      cargarVistaEntrenamiento();
+      break;
+    case "vista-rutinas":
+      cargarVistaRutinas();
+      break;
+    case "vista-medidas":
+      cargarVistaMedidas();
+      break;
+    case "vista-ejercicios":
+      cargarVistaEjercicios();
+      break;
+    case "vista-comidas":
+      cargarVistaComidas();
+      break;
+    case "vista-ajustes":
+      cargarVistaAjustes();
+      break;
+    default:
+      break;
   }
 }
 
@@ -125,11 +117,24 @@ function cargarVistaRutinas() {
 async function cargarVistaMedidas() {
   cambiarVista("vista-medidas");
 
-  renderizarTablaMedidas();
+  await renderizarTablaMedidas();
 }
 
 function cargarVistaEjercicios() {
   cambiarVista("vista-ejercicios")
+}
+
+async function cargarVistaComidas() {
+  const loader = document.getElementById("loader");
+  loader.classList.remove("oculto");
+
+  cambiarVista("vista-comidas")
+
+  actualizarTextoDia();
+
+  await renderizarComidas();
+
+  loader.classList.add("oculto");
 }
 
 function cargarVistaAjustes() {
@@ -172,6 +177,8 @@ function cambiarVista(vista, callback = null) {
   var titulo;
   const loader = document.getElementById('loader');
 
+  window.scrollTo(0, 0);
+
   switch (vista) {
     case "vista-entrenamiento":
       titulo = "Entrenamiento";
@@ -192,6 +199,8 @@ function cambiarVista(vista, callback = null) {
       titulo = "Principal";
       break;
   }
+
+  localStorage.setItem("ultima-vista", vista);
 
   loader.classList.remove('oculto');
 
@@ -221,11 +230,6 @@ function cambiarVista(vista, callback = null) {
     loader.classList.add('oculto');
   }, 300);
 }
-
-
-
-
-
 
 async function renderizarTablaMedidas() {
   const listaMedidasDiv = document.getElementById("listaMedidas");
@@ -308,6 +312,217 @@ async function renderizarTablaMedidas() {
   tabla.appendChild(tbody);
   listaMedidasDiv.appendChild(tabla);
 }
+
+async function renderizarComidas() {
+  const contenedor = document.getElementById("contenedor-comidas");
+  contenedor.innerHTML = "";
+
+  const comidas = await obtenerComidas(new Date().toISOString().split("T")[0]);
+
+  if (comidas && comidas !== null && comidas.length) {
+    for (let i = 1; i <= dataComidas.comidasActivas; i++) {
+      const comida = dataComidas[`comida${i}`];
+      const alimentos = comida?.alimentos || [];
+  
+      // Crear bloque comida
+      const bloque = document.createElement("div");
+      bloque.className = "bloque-comida";
+  
+      // Título
+      const titulo = document.createElement("h3");
+      titulo.className = "titulo-comida";
+      titulo.textContent = `Comida ${i}`;
+      bloque.appendChild(titulo);
+  
+      // Tabla
+      const tabla = document.createElement("table");
+      tabla.className = "tabla-alimentos";
+  
+      const thead = document.createElement("thead");
+      thead.innerHTML = `
+        <tr>
+          <th>Alimento</th>
+          <th>C</th>
+          <th>P</th>
+          <th>G</th>
+          <th>Kcal</th>
+        </tr>
+      `;
+      tabla.appendChild(thead);
+  
+      const tbody = document.createElement("tbody");
+      alimentos.forEach(al => {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>${al.nombre}</td>
+          <td>${al.c}</td>
+          <td>${al.p}</td>
+          <td>${al.g}</td>
+          <td>${al.kcal}</td>
+        `;
+        tbody.appendChild(fila);
+      });
+      tabla.appendChild(tbody);
+      bloque.appendChild(tabla);
+  
+      // Botón añadir alimento
+      const boton = document.createElement("button");
+      boton.className = "boton-anadir";
+      boton.textContent = "+ Añadir alimento";
+      boton.onclick = () => registrarAlimento(i); // función a definir
+      bloque.appendChild(boton);
+  
+      // Separador
+      const hr = document.createElement("hr");
+      hr.className = "separador-comida";
+      bloque.appendChild(hr);
+  
+      contenedor.appendChild(bloque);
+    }
+  } else {
+    console.log("El usuario no tiene ningún registro de comidas. Se creará la tabla vacía en función de las comidas seleccionadas");
+    const datos = await obtenerDatosPersonales();
+
+    const cantidadComidas = datos?.cantidadComidas || 0;
+  
+    if ((datos && datos !== null) && cantidadComidas != 0) {
+      for (let i = 1; i <= cantidadComidas; i++) {
+        const bloque = document.createElement("div");
+        bloque.className = "bloque-comida";
+    
+        const titulo = document.createElement("h3");
+        titulo.className = "titulo-comida";
+        titulo.textContent = `Comida ${i}`;
+        bloque.appendChild(titulo);
+    
+        const tabla = document.createElement("table");
+        tabla.className = "tabla-alimentos";
+    
+        const thead = document.createElement("thead");
+        thead.innerHTML = `
+          <tr>
+            <th>Alimento</th>
+            <th>C</th>
+            <th>P</th>
+            <th>G</th>
+            <th>Kcal</th>
+          </tr>
+        `;
+        tabla.appendChild(thead);
+    
+        const tbody = document.createElement("tbody");
+        tbody.id = `cuerpo-comida-${i}`; // Para poder insertar alimentos luego si hace falta
+        tabla.appendChild(tbody);
+    
+        bloque.appendChild(tabla);
+    
+        const boton = document.createElement("button");
+        boton.className = "boton-anadir";
+        boton.textContent = "Añadir alimento";
+        boton.onclick = () => registrarAlimento(i); // debes definir esta función
+        bloque.appendChild(boton);
+    
+        const hr = document.createElement("hr");
+        hr.className = "separador-comida";
+        bloque.appendChild(hr);
+    
+        contenedor.appendChild(bloque);
+      }
+    } else {
+      const contenedor = document.getElementById("contenedor-comidas");
+      contenedor.innerHTML = "";
+    
+      const aviso = document.createElement("div");
+      aviso.className = "aviso-comidas";
+      aviso.textContent = "Debes seleccionar la cantidad de comidas en Ajustes - Datos personales.";
+      contenedor.appendChild(aviso);
+      return;
+    }
+  }
+
+  window.scrollTo(0, 0);
+}
+
+function registrarAlimento() {
+  const modal = document.getElementById("modal-registro-alimento");
+  modal.classList.remove("oculto");
+
+  // Eventos
+  document.getElementById("btn-escanear").onclick = () => {
+    modal.classList.add("oculto");
+    escanearAlimento();
+  };
+
+  document.getElementById("btn-manual").onclick = () => {
+    modal.classList.add("oculto");
+    abrirFormularioManual();
+  };
+
+  document.getElementById("btn-cerrar-modal").onclick = () => {
+    modal.classList.add("oculto");
+  };
+}
+
+export function escanearAlimento() {
+  const container = document.getElementById("scanner-container");
+  container.classList.remove("oculto");
+
+  Quagga.init({
+    inputStream: {
+      name: "Live",
+      type: "LiveStream",
+      target: document.querySelector("#scanner"),
+      constraints: {
+        facingMode: "environment" // cámara trasera
+      }
+    },
+    decoder: {
+      readers: ["ean_reader"]
+    }
+  }, function (err) {
+    if (err) {
+      alert(err);
+      alert("No se pudo iniciar la cámara.");
+      container.classList.add("oculto");
+      return;
+    }
+    Quagga.start();
+  });
+
+  Quagga.onDetected(async function (data) {
+    const codigoBarras = data.codeResult.code;
+    console.log("Código detectado:", codigoBarras);
+
+    Quagga.stop();
+    container.classList.add("oculto");
+
+    // Buscar alimento por código en Open Food Facts
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${codigoBarras}.json`);
+    const json = await res.json();
+
+    if (json.status === 1) {
+      const n = json.product.nutriments;
+      const carbos = n.carbohydrates_100g || 0;
+      const protes = n.proteins_100g || 0;
+      const grasas = n.fat_100g || 0;
+      const kcal = n["energy-kcal_100g"] || 0;
+
+      console.log({ carbos, protes, grasas, kcal });
+
+      // Aquí puedes continuar el flujo: abrir modal, guardar, etc.
+    } else {
+      alert("Producto no encontrado.");
+    }
+  });
+
+  // Botón para cerrar el scanner
+  const cerrarBtn = document.getElementById("cerrar-scanner");
+  cerrarBtn.onclick = () => {
+    Quagga.stop();
+    container.classList.add("oculto");
+  };
+}
+
 
 function calcularRecomendacionNutricionalAutomatica() {
   console.log(camposDatosPersonales.recomendacionNutricionalAutomatica.checked)
@@ -416,7 +631,6 @@ function calcularRecomendacionNutricional(bloquearCampos) {
   campos.grasas.value = macros.grasas;
 }
 
-
 function validarCampo(campo) {
   if (!validacionActiva) return true;
 
@@ -435,9 +649,29 @@ function validarCampo(campo) {
   return !vacio;
 }
 
+let fechaActual = new Date();
+
+function actualizarTextoDia() {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const comparar = new Date(fechaActual);
+  comparar.setHours(0, 0, 0, 0);
+
+  const texto = (comparar.getTime() === hoy.getTime())
+    ? "Hoy"
+    : fechaActual.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+
+  document.getElementById("texto-dia").textContent = texto.charAt(0).toUpperCase() + texto.slice(1);
+  document.getElementById("selector-calendario").value = fechaActual.toISOString().split("T")[0];
+}
+
+function actualizarBarra(idBarra, valor, objetivo) {
+  const porcentaje = Math.min((valor / objetivo) * 100, 100);
+  document.getElementById(idBarra).style.width = porcentaje + "%";
+}
+
 
 // ONCLICKS
-
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('boton-menu-desplegable')?.addEventListener('click', menuDesplegable);
   document.getElementById('boton-cerrar-sesion')?.addEventListener('click', logout);
@@ -445,17 +679,32 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('boton-cargar-vista-rutina')?.addEventListener('click', cargarVistaRutinas);
   document.getElementById('boton-cargar-vista-medidas')?.addEventListener('click', cargarVistaMedidas);
   document.getElementById('boton-cargar-vista-ejercicios')?.addEventListener('click', cargarVistaEjercicios);
+  document.getElementById('boton-cargar-vista-comidas')?.addEventListener('click', cargarVistaComidas);
   document.getElementById('boton-cargar-vista-ajustes')?.addEventListener('click', cargarVistaAjustes);
-
   document.getElementById('boton-guardar-medida')?.addEventListener('click', guardarMedida);
-
   document.getElementById('boton-cargar-vista-datos-personales')?.addEventListener('click', cargarVistaAjustesDatosPersonales);
   document.getElementById('boton-guardar-datos-personales')?.addEventListener('click', guardarDatosPersonales);
   document.getElementById('boton-volver-vista-ajustes')?.addEventListener('click', cargarVistaAjustes);
-
   document.getElementById("switch-recomendacion")?.addEventListener('click', calcularRecomendacionNutricionalAutomatica);
   
-
+  document.getElementById("dia-anterior")?.addEventListener("click", () => {
+    fechaActual.setDate(fechaActual.getDate() - 1);
+    actualizarTextoDia();
+  });
+  
+  document.getElementById("dia-siguiente")?.addEventListener("click", () => {
+    fechaActual.setDate(fechaActual.getDate() + 1);
+    actualizarTextoDia();
+  });
+  
+  document.getElementById("texto-dia")?.addEventListener("click", () => {
+    document.getElementById("selector-calendario").click();
+  });
+  
+  document.getElementById("selector-calendario")?.addEventListener("change", (e) => {
+    fechaActual = new Date(e.target.value);
+    actualizarTextoDia();
+  });
 });
 
 // Cierra el menú si haces clic fuera
@@ -468,21 +717,6 @@ window.addEventListener("click", (e) => {
       document.getElementById('overlay').classList.add('oculto');
   }
 });
-
-export { renderizarTablaMedidas };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 let orientacionAnterior = window.innerWidth > window.innerHeight ? 'horizontal' : 'vertical';
 
@@ -575,3 +809,9 @@ function calcularMacros(peso, kcalTotales, tipoDieta) {
   };
 }
 
+
+
+
+
+
+export { renderizarTablaMedidas, calcularTMB, obtenerFactorActividad, ajustarKcalPorObjetivo, calcularMacros };
