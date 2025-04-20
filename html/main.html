@@ -15,7 +15,7 @@
     <div id="container-principal">
         <header class="barra-superior">
             <span class="nombre-app">GAINSTORMING</span>
-            <span class="nombre-seccion" id="nombreSeccion">Principal</span>
+            <span class="nombre-seccion" id="nombre-seccion">Principal</span>
         </header>
     
         <div id="vista-entrenamiento" class="vista oculto">
@@ -47,27 +47,134 @@
             Vista de ejercicios
         </div>
     
+        <div id="vista-comidas" class="vista oculto">
+            Vista de comidas
+        </div>
+
         <div id="vista-ajustes" class="vista oculto">
-            <div id="vista-ajustes-botones">
+            <div id="vista-ajustes-botones" class="vista-secundaria">
+                <button id="boton-cargar-vista-datos-personales">Datos personales</button>
                 <button id="boton-cerrar-sesion">Cerrar sesión</button>
+            </div>
+
+            <div id="vista-ajustes-datos-personales" class="vista oculto">
+                <!-- 🔹 Datos personales -->
+                <div class="bloque-ajustes">
+                    <h3>Datos personales</h3>
+                
+                    <label for="input-nombre-usuario">Nombre de usuario</label>
+                    <input type="text" id="input-nombre-usuario" placeholder="Nombre de usuario">
+                
+                    <label for="input-email">Email</label>
+                    <input type="text" id="input-email" placeholder="Email" class="disabled" disabled>
+
+                    <label for="input-edad">Edad</label>
+                    <input type="number" id="input-edad" placeholder="Edad" min="1" max="100">
+                
+                    <label for="input-peso">Peso (kg)</label>
+                    <input type="number" id="input-peso" placeholder="Peso (kg)" min="1" max="200">
+                
+                    <label for="input-altura">Altura (cm)</label>
+                    <input type="number" id="input-altura" placeholder="Altura (cm)" min="1" max="230">
+                </div>
+
+                <div class="separador-bloque"></div>
+                
+                <!-- 🔹 Objetivo -->
+                <div class="bloque-ajustes">
+                    <h3>Objetivo</h3>
+                
+                    <label for="select-nivel-actividad">Nivel de actividad</label>
+                    <select id="select-nivel-actividad">
+                    <option disabled selected>Nivel de actividad</option>
+                    <option value="sedentario">Sedentario</option>
+                    <option value="ligero">Ligero</option>
+                    <option value="moderado">Moderado</option>
+                    <option value="intenso">Intenso</option>
+                    <option value="muy-intenso">Muy intenso</option>
+                    </select>
+                
+                    <label for="select-objetivo">Objetivo</label>
+                    <select id="select-objetivo">
+                    <option disabled selected>Objetivo</option>
+                    <option value="ganar-masa-agresivo">Ganancia de masa agresiva</option>
+                    <option value="ganar-masa-moderado">Ganancia de masa moderada</option>
+                    <option value="mantener">Mantener</option>
+                    <option value="perder-grasa-moderado">Pérdida de grasa moderada</option>
+                    <option value="perder-grasa-agresivo">Pérdida de grasa agresiva</option>
+                    
+                    </select>
+                
+                    <label for="select-comidas-dia">Cantidad de comidas diarias</label>
+                    <select id="select-comidas-dia">
+                        <option disabled selected>Cantidad de comidas</option>
+                        <option value="2">2 comidas</option>
+                        <option value="3">3 comidas</option>
+                        <option value="4">4 comidas</option>
+                        <option value="5">5 comidas</option>
+                        <option value="6">6 comidas</option>
+                    </select>
+
+                    <label for="select-comidas-dia">Tipo de dieta</label>
+                    <select id="select-tipo-dieta">
+                        <option disabled selected>Tipo de dieta</option>
+                        <option value="equilibrada">Equilibrada</option>
+                        <option value="alta-proteinas">Alta en proteínas</option>
+                        <option value="alta-carbohidratos">Alta en carbohidratos</option>
+                    </select>
+                </div>
+
+                <div class="separador-bloque"></div>
+                
+                <!-- 🔹 Recomendación nutricional -->
+                <div class="bloque-ajustes">
+                    <div class="titulo-ajuste-con-switch">
+                    <h3>Recomendación nutricional</h3>
+                    <label class="switch-ajuste">
+                        <input type="checkbox" id="switch-recomendacion">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="modo-texto" id="texto-recomendacion">Automático</span>
+                    </div>
+                
+                    <label for="input-kcal-diarias">Kcal diarias</label>
+                    <input type="number" id="input-kcal-diarias" placeholder="Kcal diarias">
+                
+                    <label for="input-proteinas">Proteínas (g)</label>
+                    <input type="number" id="input-proteinas" placeholder="Proteínas (g)">
+                
+                    <label for="input-carbohidratos">Carbohidratos (g)</label>
+                    <input type="number" id="input-carbohidratos" placeholder="Carbohidratos (g)">
+                
+                    <label for="input-grasas">Grasas (g)</label>
+                    <input type="number" id="input-grasas" placeholder="Grasas (g)">
+                </div>
+
+                <div class="separador-bloque"></div>
+
+                <div id="ajustes-button-container">
+                    <button id="boton-volver-vista-ajustes">Volver</button>
+                    <button id="boton-guardar-datos-personales">Guardar</button>
+                </div>
             </div>
         </div>
     
     
         <div class="menu-flotante">
             <button class="boton-principal" id="boton-menu-desplegable">＋</button>
-            <div class="opciones" id="menuOpciones">
+            <div class="opciones" id="contenedor-menu-principal">
                 <button id="boton-cargar-vista-entrenamiento">Entrenamiento</button>
-                <button id="boton-cargar-vista-rutina">Rutina</button>
+                <button id="boton-cargar-vista-rutina">Rutinas</button>
                 <button id="boton-cargar-vista-medidas">Medidas</button>
                 <button id="boton-cargar-vista-ejercicios">Ejercicios</button>
+                <button id="boton-cargar-vista-comidas">Comidas</button>
                 <button id="boton-cargar-vista-ajustes">Ajustes</button>
             </div>
         </div>
     </div>
     
     <div id="loader" class="oculto">
-        <img src="../images/disco_carga.png" alt="Cargando" />
+        <img src="../images/carga.png" alt="Cargando" />
     </div>
 
     <div id="contenedor-temporal">

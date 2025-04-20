@@ -1,4 +1,71 @@
-import { guardarMedida, obtenerMedidas, eliminarMedida } from '../scripts/dataBaseManager.js';
+import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, guardarDatosPersonales } from '../scripts/dataBaseManager.js';
+
+var camposDatosPersonales = {}
+var validacionActiva = false;
+
+window.addEventListener("DOMContentLoaded", function () {
+  cargarVistaAjustes();
+
+  camposDatosPersonales = {
+    nombreUsuario: document.getElementById("input-nombre-usuario"),
+    email: this.document.getElementById("input-email"),
+    edad: document.getElementById("input-edad"),
+    peso: document.getElementById("input-peso"),
+    altura: document.getElementById("input-altura"),
+    nivelActividad: document.getElementById("select-nivel-actividad"),
+    objetivo: document.getElementById("select-objetivo"),
+    cantidadComidas: document.getElementById("select-comidas-dia"),
+    tipoDieta: document.getElementById("select-tipo-dieta"),
+    recomendacionNutricionalAutomatica: document.getElementById("switch-recomendacion"),
+    kcalDiarias: document.getElementById("input-kcal-diarias"),
+    proteinas: document.getElementById("input-proteinas"),
+    carbohidratos: document.getElementById("input-carbohidratos"),
+    grasas: document.getElementById("input-grasas")
+  };
+
+  function activarValidacionEnTiempoReal(campo) {
+    const evento = !campo && campo != null ? campo.tagName === "SELECT" ? "change" : "input" : "";
+  
+    if (evento != "") {
+      campo.addEventListener(evento, () => {
+        if (campo.value.trim() !== "") {
+          campo.classList.remove("input-error");
+        }
+      });
+    }
+  }
+  
+  Object.values(camposDatosPersonales).forEach(campo => {
+    activarValidacionEnTiempoReal(campo);
+  });
+
+  const camposParaRecalculo = [
+    camposDatosPersonales.edad ? camposDatosPersonales.edad.id : "",
+    camposDatosPersonales.peso ? camposDatosPersonales.peso.id : "",
+    camposDatosPersonales.altura ? camposDatosPersonales.altura.id : "",
+    camposDatosPersonales.nivelActividad ? camposDatosPersonales.nivelActividad.id : "",
+    camposDatosPersonales.objetivo ? camposDatosPersonales.objetivo.id : "",
+    camposDatosPersonales.tipoDieta ? camposDatosPersonales.tipoDieta.id : ""
+  ];
+  
+  camposParaRecalculo.forEach(id => {
+    const campo = document.getElementById(id);
+    if (campo) {
+      const evento = campo.tagName === "SELECT" ? "change" : "input";
+  
+      campo.addEventListener(evento, () => {
+        calcularRecomendacionNutricional();
+      });
+    }
+  });
+});
+
+function limpiarErrores(campos) {
+  Object.values(campos).forEach(campo => {
+    campo.classList.remove("input-error");
+  });
+}
+
 
 function mostrarVista(idVista) {
   // Oculta todas las vistas
@@ -37,7 +104,7 @@ function iniciarEjercicios() {
 
 // Mostrar menú desplegable
 function menuDesplegable() {
-  const menu = document.getElementById("menuOpciones");
+  const menu = document.getElementById("contenedor-menu-principal");
   menu.classList.toggle("activo");
 
   if (menu.classList.contains("activo")) {
@@ -69,6 +136,38 @@ function cargarVistaAjustes() {
   cambiarVista("vista-ajustes")
 }
 
+async function cargarVistaAjustesDatosPersonales() {
+  document.getElementById("vista-ajustes-botones").classList.add('oculto');
+  document.getElementById("vista-ajustes-datos-personales").classList.remove('oculto');
+
+  const loader = document.getElementById("loader");
+  loader.classList.remove("oculto");
+
+  const datos = await obtenerDatosPersonales();
+  if (datos) {
+    camposDatosPersonales.nombreUsuario.value = datos.nombreUsuario || "";
+    camposDatosPersonales.email.value = datos.email || "";
+    camposDatosPersonales.edad.value = datos.edad || "";
+    camposDatosPersonales.peso.value = datos.peso || "";
+    camposDatosPersonales.altura.value = datos.altura || "";
+
+    camposDatosPersonales.recomendacionNutricionalAutomatica.checked = datos.recomendacionNutricionalAutomatica || "";
+    camposDatosPersonales.nivelActividad.value = datos.nivelActividad || "";
+    camposDatosPersonales.objetivo.value = datos.objetivo || "";
+    camposDatosPersonales.cantidadComidas.value = datos.cantidadComidas || "";
+    camposDatosPersonales.tipoDieta.value = datos.tipoDieta || "";
+
+    camposDatosPersonales.kcalDiarias.value = datos.kcalDiarias || "";
+    camposDatosPersonales.proteinas.value = datos.proteinas || "";
+    camposDatosPersonales.carbohidratos.value = datos.carbohidratos || "";
+    camposDatosPersonales.grasas.value = datos.grasas || "";
+
+    calcularRecomendacionNutricionalAutomatica()
+  }
+
+  loader.classList.add("oculto");
+}
+
 function cambiarVista(vista, callback = null) {
   var titulo;
   const loader = document.getElementById('loader');
@@ -97,7 +196,7 @@ function cambiarVista(vista, callback = null) {
   loader.classList.remove('oculto');
 
   setTimeout(() => {
-    document.getElementById("nombreSeccion").textContent = titulo;
+    document.getElementById("nombre-seccion") ? document.getElementById("nombre-seccion").textContent = titulo : "";
 
     document.querySelectorAll('.vista').forEach(el => {
       if (el.id !== vista) {
@@ -107,7 +206,12 @@ function cambiarVista(vista, callback = null) {
       }
     });
 
-    document.getElementById("menuOpciones").classList.remove("activo");
+    document.querySelectorAll('.vista-secundaria').forEach(sub => {
+      sub.classList.remove('oculto');
+    });
+
+    document.getElementById("contenedor-menu-principal") ? 
+        document.getElementById("contenedor-menu-principal").classList.remove("activo") : "";
     document.getElementById('overlay').classList.add('oculto');
 
     if (typeof callback === 'function') {
@@ -205,6 +309,131 @@ async function renderizarTablaMedidas() {
   listaMedidasDiv.appendChild(tabla);
 }
 
+function calcularRecomendacionNutricionalAutomatica() {
+  console.log(camposDatosPersonales.recomendacionNutricionalAutomatica.checked)
+
+  if (camposDatosPersonales.recomendacionNutricionalAutomatica.checked) {
+    validacionActiva = true;
+    calcularRecomendacionNutricional(true);
+  } else {
+    validacionActiva = false;
+    calcularRecomendacionNutricional(false);
+    limpiarErrores(camposDatosPersonales);
+  }
+  
+}
+
+function calcularRecomendacionNutricional(bloquearCampos) {
+  const campos = camposDatosPersonales;
+
+  if (!campos.recomendacionNutricionalAutomatica.checked) {
+    if (bloquearCampos === true) {
+      campos.kcalDiarias.disabled = true;
+      campos.kcalDiarias.classList.add("disabled");
+      campos.proteinas.disabled = true;
+      campos.proteinas.classList.add("disabled");
+      campos.carbohidratos.disabled = true;
+      campos.carbohidratos.classList.add("disabled");
+      campos.grasas.disabled = true;
+      campos.grasas.classList.add("disabled");
+    } else if (bloquearCampos === false) {
+      campos.kcalDiarias.disabled = false;
+      campos.kcalDiarias.classList.remove("disabled");
+      campos.proteinas.disabled = false;
+      campos.proteinas.classList.remove("disabled");
+      campos.carbohidratos.disabled = false;
+      campos.carbohidratos.classList.remove("disabled");
+      campos.grasas.disabled = false;
+      campos.grasas.classList.remove("disabled");
+    }
+
+    return;
+  } else {
+    campos.kcalDiarias.disabled = true;
+    campos.kcalDiarias.classList.add("disabled");
+    campos.proteinas.disabled = true;
+    campos.proteinas.classList.add("disabled");
+    campos.carbohidratos.disabled = true;
+    campos.carbohidratos.classList.add("disabled");
+    campos.grasas.disabled = true;
+    campos.grasas.classList.add("disabled");
+  }
+
+  // Validar campos requeridos
+  const camposValidos = [
+    validarCampo(campos.edad),
+    validarCampo(campos.peso),
+    validarCampo(campos.altura),
+    validarCampo(campos.nivelActividad),
+    validarCampo(campos.objetivo),
+    validarCampo(campos.tipoDieta)
+  ];
+
+  if (camposValidos.includes(false)) { 
+    console.log("Campos vacíos, cancelado cálculo");
+    return;
+  }
+
+  if (bloquearCampos === true) {
+    campos.kcalDiarias.disabled = true;
+    campos.kcalDiarias.classList.add("disabled");
+    campos.proteinas.disabled = true;
+    campos.proteinas.classList.add("disabled");
+    campos.carbohidratos.disabled = true;
+    campos.carbohidratos.classList.add("disabled");
+    campos.grasas.disabled = true;
+    campos.grasas.classList.add("disabled");
+  } else if (bloquearCampos === false) {
+    campos.kcalDiarias.disabled = false;
+    campos.kcalDiarias.classList.remove("disabled");
+    campos.proteinas.disabled = false;
+    campos.proteinas.classList.remove("disabled");
+    campos.carbohidratos.disabled = false;
+    campos.carbohidratos.classList.remove("disabled");
+    campos.grasas.disabled = false;
+    campos.grasas.classList.remove("disabled");
+
+    return;
+  }
+
+  // Calcular valores recomendados
+  const edad = parseInt(campos.edad.value);
+  const peso = parseFloat(campos.peso.value);
+  const altura = parseFloat(campos.altura.value);
+  const nivel = campos.nivelActividad.value;
+  const objetivo = campos.objetivo.value;
+  const tipoDieta = campos.tipoDieta.value;
+
+  const tmb = calcularTMB(peso, altura, edad);
+  const factor = obtenerFactorActividad(nivel);
+  const kcalTotales = ajustarKcalPorObjetivo(tmb * factor, objetivo);
+  const macros = calcularMacros(peso, kcalTotales, tipoDieta);
+
+  // Rellenar campos
+  campos.kcalDiarias.value = Math.round(kcalTotales);
+  campos.proteinas.value = macros.proteinas;
+  campos.carbohidratos.value = macros.carbohidratos;
+  campos.grasas.value = macros.grasas;
+}
+
+
+function validarCampo(campo) {
+  if (!validacionActiva) return true;
+
+  const valor = (campo.value || "").toString().trim();
+  let vacio = valor === "";
+
+  // Validación específica para <select>
+  if (campo.tagName === "SELECT") {
+    const selectedOption = campo.options[campo.selectedIndex];
+    if (selectedOption.disabled) {
+      vacio = true;
+    }
+  }
+
+  campo.classList.toggle("input-error", vacio);
+  return !vacio;
+}
 
 
 // ONCLICKS
@@ -219,13 +448,19 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('boton-cargar-vista-ajustes')?.addEventListener('click', cargarVistaAjustes);
 
   document.getElementById('boton-guardar-medida')?.addEventListener('click', guardarMedida);
+
+  document.getElementById('boton-cargar-vista-datos-personales')?.addEventListener('click', cargarVistaAjustesDatosPersonales);
+  document.getElementById('boton-guardar-datos-personales')?.addEventListener('click', guardarDatosPersonales);
+  document.getElementById('boton-volver-vista-ajustes')?.addEventListener('click', cargarVistaAjustes);
+
+  document.getElementById("switch-recomendacion")?.addEventListener('click', calcularRecomendacionNutricionalAutomatica);
   
 
 });
 
 // Cierra el menú si haces clic fuera
 window.addEventListener("click", (e) => {
-  const menu = document.getElementById("menuOpciones");
+  const menu = document.getElementById("contenedor-menu-principal");
   const boton = document.querySelector(".boton-principal");
 
   if (menu && !menu.contains(e.target) && !boton.contains(e.target)) {
@@ -257,7 +492,11 @@ function comprobarOrientacion() {
 
   // Lógica de visibilidad
   
-  document.getElementById("container-principal").classList.toggle("oculto", esHorizontal);
+  try {
+    document.getElementById("container-principal").classList.toggle("oculto", esHorizontal);
+  } catch(exception) {
+    document.getElementById("contenedor-index").classList.toggle("oculto", esHorizontal);
+  }
 
   // Detectar cambio de orientación
   if (orientacionActual !== orientacionAnterior) {
@@ -270,3 +509,69 @@ function comprobarOrientacion() {
 // Ejecutar al cargar y al rotar
 window.addEventListener("load", comprobarOrientacion);
 window.addEventListener("resize", comprobarOrientacion);
+
+
+// Funciones de cálculo de KCAL
+
+function calcularTMB(peso, altura, edad) {
+  return 10 * peso + 6.25 * altura - 5 * edad + 5; // Hombre (puedo añadir versión mujer si lo necesitas)
+}
+
+function obtenerFactorActividad(nivel) {
+  switch (nivel) {
+    case "sedentario": return 1.2;
+    case "ligero": return 1.375;
+    case "moderado": return 1.55;
+    case "intenso": return 1.725;
+    case "muy-intenso": return 1.9;
+    default: return 1.2;
+  }
+}
+
+function ajustarKcalPorObjetivo(kcal, objetivo) {
+  switch (objetivo) {
+    case "ganar-masa-agresivo": return kcal + 600;
+    case "ganar-masa-moderado": return kcal + 300;
+    case "mantener": return kcal;
+    case "perder-grasa-moderado": return kcal - 300;
+    case "perder-grasa-agresivo": return kcal - 600;
+    
+    default: return kcal;
+  }
+}
+
+function calcularMacros(peso, kcalTotales, tipoDieta) {
+  let proteinasPorKg = 2;
+  let grasasPorKg = 1;
+
+  switch (tipoDieta) {
+    case "alta-proteinas":
+      proteinasPorKg = 2.5;
+      grasasPorKg = 1;
+      break;
+    case "alta-carbohidratos":
+      proteinasPorKg = 1.5;
+      grasasPorKg = 0.8;
+      break;
+    case "equilibrada":
+    default:
+      proteinasPorKg = 2;
+      grasasPorKg = 1.15;
+      break;
+  }
+
+  const proteinas = peso * proteinasPorKg;
+  const grasas = peso * grasasPorKg;
+
+  const kcalProte = proteinas * 4;
+  const kcalGrasas = grasas * 9;
+  const kcalRestantes = kcalTotales - (kcalProte + kcalGrasas);
+  const carbohidratos = Math.max(0, kcalRestantes / 4);
+
+  return {
+    proteinas: Math.round(proteinas),
+    grasas: Math.round(grasas),
+    carbohidratos: Math.round(carbohidratos)
+  };
+}
+

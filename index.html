@@ -11,8 +11,8 @@
 <body>
   <div id="contenedor-index">
     <h1>GAINSTORMING</h1>
-    <input type="email" id="email" placeholder="Correo" value="danielgarciaalbert@icloud.com"/>
-    <input type="password" id="password" placeholder="Contraseña" value="Daniel1967"/>
+    <input type="email" id="email" placeholder="Correo"/>
+    <input type="password" id="password" placeholder="Contraseña"/>
 
     <div class="button-container">
         <button onclick="signup()">Registrarse</button>
@@ -27,21 +27,33 @@
   <div id="bloqueo-horizontal" class="oculto">
     <p>Por favor, usa la aplicación en modo vertical.</p>
   </div>
-  
-    <script type="module" src="scripts/dataBaseManager.js"></script>
 
-    <script type="module">
-        import { auth } from "./scripts/dataBaseManager.js";
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-      
-        onAuthStateChanged(auth, (user) => {
-          if (user) {
-            window.location.href = "./html/main.html";
-            return;
-          }
-        });
-      </script>
-      
-      <script type="module" src="scripts/main.js"></script>
+  <div id="loader" class="oculto">
+    <img src="../images/carga.png" alt="Cargando" />
+  </div>
+
+  <div id="overlay" class="oculto"></div>
+  
+  <script type="module" src="scripts/dataBaseManager.js"></script>
+
+  <script type="module">
+    import { auth } from "./scripts/dataBaseManager.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const vieneDeRegistro = localStorage.getItem("registroManual") === "1";
+
+        if (!vieneDeRegistro) {
+          window.location.href = "html/main.html";
+        }
+
+        // Limpiar flag después
+        localStorage.removeItem("registroManual");
+      }
+    });
+  </script>
+    
+  <script type="module" src="scripts/main.js"></script>
 </body>
 </html>

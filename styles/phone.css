@@ -55,7 +55,7 @@
   }
 
   #loader img {
-    width: 225px;
+    width: 200px;
     height: 200px;
     animation: girar 1s linear infinite;
   }
@@ -144,7 +144,7 @@
     padding: 0.8rem;
     border: none;
     border-radius: 8px;
-    background-color: black;
+    background-color: #222;
     color: white;
     font-size: 1rem;
     cursor: pointer;
@@ -198,6 +198,16 @@
   .oculto {
     display: none !important;
   }
+
+
+
+
+
+
+
+
+
+
 
   /* Menú flotante */
 
@@ -261,9 +271,24 @@
   }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   /* Vista de ajustes */
 
-  #vista-ajustes {
+  #vista-ajustes, #vista-ajustes-datos-personales {
     width: 90%;
     height: auto;
     display: flex;
@@ -272,19 +297,176 @@
 
   #vista-ajustes-botones {
     display: flex;
+    flex-direction: column;
     justify-content: center;
-    width: auto;
+    width: 90%;
+    height: 100%;
+    margin-top: 10px;
+    gap: 1rem;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
   #vista-ajustes button {
     padding: 0.8rem;
     border: none;
     border-radius: 8px;
-    background-color: black;
+    background-color: #222;
     color: white;
     font-size: 1rem;
     cursor: pointer;
   }
+
+  #vista-ajustes-datos-personales {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-top: 2rem;
+    padding-bottom: 4rem; /* margen inferior para separar del borde */
+  }
+
+  #ajustes-button-container {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    margin-top: 20px;
+  }
+  
+  #ajustes-button-container button {
+    width: 100%;
+    margin: 0px 5px 0px 5px;
+  }
+
+  /* Cada bloque bien separado, con inputs debajo del título */
+  .bloque-ajustes {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .bloque-ajustes h3 {
+    font-size: 1.2rem;
+  }
+
+  /* Inputs y select uniformes */
+  .bloque-ajustes input,
+  .bloque-ajustes select {
+    padding: 0.8rem;
+    font-size: 0.9rem;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #fff;
+  }
+
+.titulo-ajuste-con-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0;
+}
+
+/* Switch base */
+.switch-ajuste {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.switch-ajuste input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0;
+  right: 0; bottom: 0;
+  background-color: #ccc;
+  border-radius: 24px;
+  transition: 0.3s;
+}
+
+.slider::before {
+  position: absolute;
+  content: "";
+  height: 18px; width: 18px;
+  left: 3px; bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.switch-ajuste input:checked + .slider {
+  background-color: #222;
+}
+
+.switch-ajuste input:checked + .slider::before {
+  transform: translateX(18px);
+}
+
+/* Texto a la derecha del switch */
+.modo-texto {
+  font-size: 0.9rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.disabled {
+  color: #999;
+  border: 1px solid #ccc;
+  cursor: not-allowed;
+  opacity: 0.8;
+
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #eaeaea69 !important;
+}
+
+
+input.input-error,
+select.input-error {
+  border: 2px solid #222 !important;
+  background-color: #fff !important;
+}
+
+.bloque-ajustes label {
+  font-size: 1rem;
+  margin-top: 0.5rem;
+  color: #333;
+}
+
+.separador-bloque {
+  border-top: 1px solid #ddd;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   /* Vista de medidas */
 
@@ -299,7 +481,7 @@
     padding: 0.8rem;
     border: none;
     border-radius: 8px;
-    background-color: black;
+    background-color: #222;
     color: white;
     cursor: pointer;
     width: 100%;
