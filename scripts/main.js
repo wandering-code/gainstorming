@@ -1,6 +1,6 @@
 import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, 
   guardarDatosPersonales, obtenerComidas, registrarAlimento, obtenerAlimentos, 
-  eliminarAlimento, actualizarAlimento } from '../scripts/dataBaseManager.js';
+  eliminarAlimento, actualizarAlimento, registrarAlimentoAComida } from '../scripts/dataBaseManager.js';
 
 const Quagga = window.Quagga;
 
@@ -318,27 +318,28 @@ async function renderizarComidas() {
   const contenedor = document.getElementById("contenedor-comidas");
   contenedor.innerHTML = "";
 
-  const comidas = await obtenerComidas(new Date().toISOString().split("T")[0]);
+  const fecha = document.getElementById("selector-calendario").value;
+  const comidas = await obtenerComidas(fecha);
 
-  if (comidas && comidas !== null && comidas.length) {
-    for (let i = 1; i <= dataComidas.comidasActivas; i++) {
-      const comida = dataComidas[`comida${i}`];
+  if (comidas && Object.keys(comidas).some(k => k.startsWith("comida"))) {
+    const claves = Object.keys(comidas).filter(k => k.startsWith("comida"));
+    const total = claves.length;
+
+    for (let i = 1; i <= total; i++) {
+      const comida = comidas[`comida${i}`];
       const alimentos = comida?.alimentos || [];
-  
-      // Crear bloque comida
+
       const bloque = document.createElement("div");
       bloque.className = "bloque-comida";
-  
-      // Título
+
       const titulo = document.createElement("h3");
       titulo.className = "titulo-comida";
       titulo.textContent = `Comida ${i}`;
       bloque.appendChild(titulo);
-  
-      // Tabla
+
       const tabla = document.createElement("table");
       tabla.className = "tabla-alimentos";
-  
+
       const thead = document.createElement("thead");
       thead.innerHTML = `
         <tr>
@@ -350,12 +351,13 @@ async function renderizarComidas() {
         </tr>
       `;
       tabla.appendChild(thead);
-  
+
       const tbody = document.createElement("tbody");
+      tbody.id = `cuerpo-comida-${i}`;
       alimentos.forEach(al => {
         const fila = document.createElement("tr");
         fila.innerHTML = `
-          <td>${al.nombre}</td>
+          <td>${al.nombre}${al.marca ? ` (${al.marca})` : ''}</td>
           <td>${al.c}</td>
           <td>${al.p}</td>
           <td>${al.g}</td>
@@ -365,40 +367,38 @@ async function renderizarComidas() {
       });
       tabla.appendChild(tbody);
       bloque.appendChild(tabla);
-  
-      // Botón añadir alimento
+
       const boton = document.createElement("button");
       boton.className = "boton-anadir";
       boton.textContent = "Añadir alimento";
-      boton.onclick = () => abrirModalAlimentos(i); // función a definir
+      boton.onclick = () => abrirModalAlimentos(i);
       bloque.appendChild(boton);
-  
-      // Separador
+
       const hr = document.createElement("hr");
       hr.className = "separador-comida";
       bloque.appendChild(hr);
-  
+
       contenedor.appendChild(bloque);
     }
-  } else {
-    console.log("El usuario no tiene ningún registro de comidas. Se creará la tabla vacía en función de las comidas seleccionadas");
-    const datos = await obtenerDatosPersonales();
 
+  } else {
+    console.log("No hay datos guardados. Se crea la estructura según preferencias del usuario.");
+    const datos = await obtenerDatosPersonales();
     const cantidadComidas = datos?.cantidadComidas || 0;
-  
-    if ((datos && datos !== null) && cantidadComidas != 0) {
+
+    if (cantidadComidas != 0) {
       for (let i = 1; i <= cantidadComidas; i++) {
         const bloque = document.createElement("div");
         bloque.className = "bloque-comida";
-    
+
         const titulo = document.createElement("h3");
         titulo.className = "titulo-comida";
         titulo.textContent = `Comida ${i}`;
         bloque.appendChild(titulo);
-    
+
         const tabla = document.createElement("table");
         tabla.className = "tabla-alimentos";
-    
+
         const thead = document.createElement("thead");
         thead.innerHTML = `
           <tr>
@@ -410,41 +410,41 @@ async function renderizarComidas() {
           </tr>
         `;
         tabla.appendChild(thead);
-    
+
         const tbody = document.createElement("tbody");
-        tbody.id = `cuerpo-comida-${i}`; // Para poder insertar alimentos luego si hace falta
+        tbody.id = `cuerpo-comida-${i}`;
         tabla.appendChild(tbody);
-    
+
         bloque.appendChild(tabla);
-    
+
         const boton = document.createElement("button");
         boton.className = "boton-anadir";
         boton.textContent = "Añadir alimento";
         boton.onclick = () => abrirModalAlimentos(i);
         bloque.appendChild(boton);
-    
+
         const hr = document.createElement("hr");
         hr.className = "separador-comida";
         bloque.appendChild(hr);
-    
+
         contenedor.appendChild(bloque);
       }
     } else {
-      const contenedor = document.getElementById("contenedor-comidas");
       contenedor.innerHTML = "";
-    
+
       const aviso = document.createElement("div");
       aviso.className = "aviso-comidas";
       aviso.textContent = "Debes seleccionar la cantidad de comidas en Ajustes - Datos personales.";
       contenedor.appendChild(aviso);
-      return;
     }
   }
 
   window.scrollTo(0, 0);
 }
 
-async function abrirModalAlimentos() {
+
+
+async function abrirModalAlimentos(comida) {
   cargando(true);
 
   const modal = document.getElementById("modal-registro-alimento");
@@ -474,20 +474,6 @@ async function abrirModalAlimentos() {
   buscador.className = "buscador-alimentos";
   contenedor.appendChild(buscador);
 
-  buscador.addEventListener("input", debounce(async () => {
-    const texto = buscador.value.trim();
-    const resultados = await obtenerAlimentos(texto);
-
-    console.log("Resultado:", JSON.stringify(resultados, null, 2));
-  
-    tbody.innerHTML = "";
-    resultados.sort((a, b) => a.nombre.localeCompare(b.nombre));
-    resultados.forEach(alimento => {
-      const fila = crearFilaAlimento(alimento);
-      tbody.appendChild(fila);
-    });
-  }, 300));
-
   const tabla = document.createElement("table");
   tabla.className = "tabla-alimentos-modal";
 
@@ -507,77 +493,44 @@ async function abrirModalAlimentos() {
   tabla.appendChild(tbody);
   contenedor.appendChild(tabla);
 
+  buscador.addEventListener("input", debounce(async () => {
+    const texto = buscador.value.trim();
+    const resultados = await obtenerAlimentos(texto);
+
+    tbody.innerHTML = "";
+    resultados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    resultados.forEach(alimento => {
+      const fila = crearFilaAlimento(alimento, comida);
+      tbody.appendChild(fila);
+    });
+  }, 300));
+
   const alimentos = await obtenerAlimentos();
   alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   alimentos.forEach(alimento => {
-    const fila = document.createElement("tr");
-
-    // Nombre
-    const tdNombre = document.createElement("td");
-    tdNombre.className = "celda-nombre";
-    tdNombre.textContent = `${alimento.nombre} ${alimento.marca ? '(' + alimento.marca + ')' : ''}`;
-
-    // Macros
-    const tdMacros = document.createElement("td");
-    tdMacros.className = "celda-macros";
-    tdMacros.innerHTML = `
-      <div><span>C:</span> ${alimento.carbos}g</div>
-      <div><span>P:</span> ${alimento.protes}g</div>
-      <div><span>G:</span> ${alimento.grasas}g</div>
-      <div><span>Kcal:</span> ${alimento.kcal}</div>
-    `;
-
-    // Acción
-    const tdAccion = document.createElement("td");
-    tdAccion.className = "celda-accion";
-
-    const contenedorAccion = document.createElement("div");
-    contenedorAccion.className = "accion-contenedor";
-
-    const btnAñadir = document.createElement("button");
-    btnAñadir.className = "icono-btn";
-    btnAñadir.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M8 1a.5.5 0 0 1 .5.5V7h5.5a.5.5 0 0 1 0 1H8.5v5.5a.5.5 0 0 1-1 0V8H2a.5.5 0 0 1 0-1h5.5V1.5A.5.5 0 0 1 8 1z"/>
-      </svg>`;
-      btnAñadir.onclick = () => añadirAlimentoAComida(alimento);
-
-    const btnEditar = document.createElement("button");
-    btnEditar.className = "icono-btn";
-    btnEditar.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zM10.5 3.207 2 11.707V13h1.293l8.5-8.5-1.293-1.293z"/>
-      </svg>`;
-    btnEditar.onclick = () => editarValoresAlimento(alimento.id);
-
-    const btnBorrar = document.createElement("button");
-    btnBorrar.className = "icono-btn";
-    btnBorrar.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm5 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H5V1.5A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5V2h2.5a1 1 0 0 1 1 1zM6 1.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V2H6v-.5zM4 4v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4H4z"/>
-      </svg>`;
-    btnBorrar.onclick = () => borrarAlimento(alimento.id);
-
-    contenedorAccion.appendChild(btnAñadir);
-    contenedorAccion.appendChild(btnEditar);
-    contenedorAccion.appendChild(btnBorrar);
-    tdAccion.appendChild(contenedorAccion);
-
-    fila.appendChild(tdNombre);
-    fila.appendChild(tdMacros);
-    fila.appendChild(tdAccion);
-
+    const fila = crearFilaAlimento(alimento, comida);
     tbody.appendChild(fila);
   });
 
   cargando(false);
 }
 
-function añadirAlimentoAComida(alimento) {
+
+async function añadirAlimentoAComida(alimento, comida) {
   console.log("Insertando alimento: ", alimento);
+
+  await registrarAlimentoAComida({
+    nombre: alimento.nombre,
+    c: alimento.c,
+    p: alimento.p,
+    g: alimento.g,
+    kcal: alimento.kcal
+  }, comida);
+
+  abrirModalAlimentos();
 }
+
 
 function debounce(func, delay) {
   let timeout;
@@ -711,7 +664,7 @@ export async function escanearAlimento() {
       const grasas = n.fat_100g || 0;
       const kcal = n["energy-kcal_100g"] || 0;
 
-      registrarAlimento({
+      añadirAlimento({
         nombre,
         marca,
         codigo: codigoBarras,
@@ -739,41 +692,40 @@ export async function escanearAlimento() {
 async function añadirAlimento(datos) {
   cargando(true);
 
-  // Eliminar modal anterior si ya existe
   let modal = document.getElementById("modal-editar-alimento");
   if (modal) modal.remove();
 
-  // Crear modal
   modal = document.createElement("div");
   modal.id = "modal-editar-alimento";
   modal.className = "modal-registrar";
+
   modal.innerHTML = `
     <div class="modal-contenido">
       <p class="modal-titulo">Añadir alimento</p>
 
       <div class="grupo-campo">
         <label for="edit-nombre">Nombre</label>
-        <input id="edit-nombre" value="">
+        <input id="edit-nombre" value="${datos?.nombre || ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-marca">Marca</label>
-        <input id="edit-marca" value="">
+        <input id="edit-marca" value="${datos?.marca || ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-carbos">Carbohidratos</label>
-        <input id="edit-carbos" type="number" value="">
+        <input id="edit-carbos" type="number" value="${datos?.carbos ?? ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-protes">Proteínas</label>
-        <input id="edit-protes" type="number" value="">
+        <input id="edit-protes" type="number" value="${datos?.protes ?? ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-grasas">Grasas</label>
-        <input id="edit-grasas" type="number" value="">
+        <input id="edit-grasas" type="number" value="${datos?.grasas ?? ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-kcal">Kcal</label>
-        <input id="edit-kcal" type="number" value="">
+        <input id="edit-kcal" type="number" value="${datos?.kcal ?? ''}">
       </div>
 
       <div class="separador-bloque"></div>
@@ -782,19 +734,17 @@ async function añadirAlimento(datos) {
       <button id="btn-cerrar-edicion" class="modal-cerrar">Cancelar</button>
     </div>
   `;
-  document.body.appendChild(modal);
 
+  document.body.appendChild(modal);
   modal.classList.remove("oculto");
+
   cargando(false);
 
-  // Cancelar
-  document.getElementById("btn-cerrar-edicion").onclick = () => { 
+  document.getElementById("btn-cerrar-edicion").onclick = () => {
     modal.remove();
-
     abrirModalAlimentos();
   };
 
-  // Guardar nuevo alimento
   document.getElementById("btn-guardar-edicion").onclick = async () => {
     cargando(true);
 
@@ -812,9 +762,10 @@ async function añadirAlimento(datos) {
     modal.remove();
 
     cargando(false);
-    abrirModalAlimentos(); // recarga la tabla
+    abrirModalAlimentos();
   };
 }
+
 
 
 async function editarValoresAlimento(id) {

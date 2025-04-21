@@ -468,6 +468,8 @@ export async function registrarAlimento(datos) {
         kcal: datos.kcal
     });
 
+    console.log("Alimento: ", datos);
+
     console.log("ALimento guardado con ID:", docRef.id);
 
   } catch (error) {
@@ -570,6 +572,49 @@ export async function obtenerAlimentos(texto) {
     };
   });
 }
+
+export async function registrarAlimentoAComida(alimento, comidaIndex) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const fecha = document.getElementById("selector-calendario").value;
+  const docRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
+  const snapshot = await getDoc(docRef);
+
+  // Sanear alimento: eliminar claves undefined
+  const alimentoLimpio = {
+    nombre: alimento.nombre || 'Sin nombre',
+    c: alimento.c ?? 0,
+    p: alimento.p ?? 0,
+    g: alimento.g ?? 0,
+    kcal: alimento.kcal ?? 0
+  };
+
+  let data;
+
+  if (snapshot.exists()) {
+    const actual = snapshot.data();
+    const comida = actual[`comida${comidaIndex}`]?.alimentos || [];
+    comida.push(alimentoLimpio);
+
+    data = {
+      ...actual,
+      [`comida${comidaIndex}`]: {
+        alimentos: comida
+      }
+    };
+  } else {
+    data = {
+      [`comida${comidaIndex}`]: {
+        alimentos: [alimentoLimpio]
+      },
+      resumenDiario: null
+    };
+  }
+
+  await setDoc(docRef, data);
+}
+
 
 
 
