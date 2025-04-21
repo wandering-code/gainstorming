@@ -223,19 +223,26 @@
 
     <div id="modal-registro-alimento" class="modal-registrar oculto">
         <div class="modal-contenido">
-          <p class="modal-titulo">¿Cómo quieres añadir el alimento?</p>
           <div class="modal-opciones">
-            <button id="btn-escanear">Escanear alimento</button>
-            <button id="btn-manual">Añadir manualmente</button>
+            <button id="btn-escanear">Escanear</button>
+            <button id="btn-manual">Añadir</button>
           </div>
+      
+          <div class="separador-bloque"></div>
+      
+          <!-- Contenido dinámico -->
+          <div id="formulario-manual" class="oculto"></div>
+      
           <button id="btn-cerrar-modal" class="modal-cerrar">Cancelar</button>
         </div>
     </div>
 
     <div id="scanner-container" class="oculto">
-        <div id="scanner"></div>
-        <button id="cerrar-scanner" class="boton-cancelar">Cancelar</button>
-      </div>
+        <div id="scanner-modal">
+          <div id="scanner"></div>
+          <button id="cerrar-scanner" class="boton-cancelar">Cancelar</button>
+        </div>
+    </div>      
       
     <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
     <script type="module" src="../scripts/dataBaseManager.js"></script>

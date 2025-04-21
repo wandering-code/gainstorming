@@ -1,4 +1,6 @@
-import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, guardarDatosPersonales, obtenerComidas } from '../scripts/dataBaseManager.js';
+import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, 
+  guardarDatosPersonales, obtenerComidas, registrarAlimento, obtenerAlimentos, 
+  eliminarAlimento, actualizarAlimento } from '../scripts/dataBaseManager.js';
 
 const Quagga = window.Quagga;
 
@@ -125,8 +127,7 @@ function cargarVistaEjercicios() {
 }
 
 async function cargarVistaComidas() {
-  const loader = document.getElementById("loader");
-  loader.classList.remove("oculto");
+  cargando(true);
 
   cambiarVista("vista-comidas")
 
@@ -134,7 +135,7 @@ async function cargarVistaComidas() {
 
   await renderizarComidas();
 
-  loader.classList.add("oculto");
+  cargando(false);
 }
 
 function cargarVistaAjustes() {
@@ -368,8 +369,8 @@ async function renderizarComidas() {
       // Botón añadir alimento
       const boton = document.createElement("button");
       boton.className = "boton-anadir";
-      boton.textContent = "+ Añadir alimento";
-      boton.onclick = () => registrarAlimento(i); // función a definir
+      boton.textContent = "Añadir alimento";
+      boton.onclick = () => abrirModalAlimentos(i); // función a definir
       bloque.appendChild(boton);
   
       // Separador
@@ -419,7 +420,7 @@ async function renderizarComidas() {
         const boton = document.createElement("button");
         boton.className = "boton-anadir";
         boton.textContent = "Añadir alimento";
-        boton.onclick = () => registrarAlimento(i); // debes definir esta función
+        boton.onclick = () => abrirModalAlimentos(i);
         bloque.appendChild(boton);
     
         const hr = document.createElement("hr");
@@ -443,11 +444,12 @@ async function renderizarComidas() {
   window.scrollTo(0, 0);
 }
 
-function registrarAlimento() {
+async function abrirModalAlimentos() {
+  cargando(true);
+
   const modal = document.getElementById("modal-registro-alimento");
   modal.classList.remove("oculto");
 
-  // Eventos
   document.getElementById("btn-escanear").onclick = () => {
     modal.classList.add("oculto");
     escanearAlimento();
@@ -455,17 +457,205 @@ function registrarAlimento() {
 
   document.getElementById("btn-manual").onclick = () => {
     modal.classList.add("oculto");
-    abrirFormularioManual();
+    añadirAlimento();
   };
 
   document.getElementById("btn-cerrar-modal").onclick = () => {
     modal.classList.add("oculto");
   };
+
+  const contenedor = document.getElementById("formulario-manual");
+  contenedor.innerHTML = "";
+  contenedor.classList.remove("oculto");
+
+  const buscador = document.createElement("input");
+  buscador.type = "text";
+  buscador.placeholder = "Buscar por nombre o marca";
+  buscador.className = "buscador-alimentos";
+  contenedor.appendChild(buscador);
+
+  buscador.addEventListener("input", debounce(async () => {
+    const texto = buscador.value.trim();
+    const resultados = await obtenerAlimentos(texto);
+
+    console.log("Resultado:", JSON.stringify(resultados, null, 2));
+  
+    tbody.innerHTML = "";
+    resultados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    resultados.forEach(alimento => {
+      const fila = crearFilaAlimento(alimento);
+      tbody.appendChild(fila);
+    });
+  }, 300));
+
+  const tabla = document.createElement("table");
+  tabla.className = "tabla-alimentos-modal";
+
+  const thead = document.createElement("thead");
+  thead.innerHTML = `
+    <tr>
+      <th class="celda-nombre-th">Nombre</th>
+      <th class="celda-macros-th">Info</th>
+      <th class="celda-accion-th">Acción</th>
+    </tr>
+  `;
+
+  const tbody = document.createElement("tbody");
+  tbody.id = "tabla-alimentos-modal-body";
+
+  tabla.appendChild(thead);
+  tabla.appendChild(tbody);
+  contenedor.appendChild(tabla);
+
+  const alimentos = await obtenerAlimentos();
+  alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  alimentos.forEach(alimento => {
+    const fila = document.createElement("tr");
+
+    // Nombre
+    const tdNombre = document.createElement("td");
+    tdNombre.className = "celda-nombre";
+    tdNombre.textContent = `${alimento.nombre} ${alimento.marca ? '(' + alimento.marca + ')' : ''}`;
+
+    // Macros
+    const tdMacros = document.createElement("td");
+    tdMacros.className = "celda-macros";
+    tdMacros.innerHTML = `
+      <div><span>C:</span> ${alimento.carbos}g</div>
+      <div><span>P:</span> ${alimento.protes}g</div>
+      <div><span>G:</span> ${alimento.grasas}g</div>
+      <div><span>Kcal:</span> ${alimento.kcal}</div>
+    `;
+
+    // Acción
+    const tdAccion = document.createElement("td");
+    tdAccion.className = "celda-accion";
+
+    const contenedorAccion = document.createElement("div");
+    contenedorAccion.className = "accion-contenedor";
+
+    const btnAñadir = document.createElement("button");
+    btnAñadir.className = "icono-btn";
+    btnAñadir.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M8 1a.5.5 0 0 1 .5.5V7h5.5a.5.5 0 0 1 0 1H8.5v5.5a.5.5 0 0 1-1 0V8H2a.5.5 0 0 1 0-1h5.5V1.5A.5.5 0 0 1 8 1z"/>
+      </svg>`;
+      btnAñadir.onclick = () => añadirAlimentoAComida(alimento);
+
+    const btnEditar = document.createElement("button");
+    btnEditar.className = "icono-btn";
+    btnEditar.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zM10.5 3.207 2 11.707V13h1.293l8.5-8.5-1.293-1.293z"/>
+      </svg>`;
+    btnEditar.onclick = () => editarValoresAlimento(alimento.id);
+
+    const btnBorrar = document.createElement("button");
+    btnBorrar.className = "icono-btn";
+    btnBorrar.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm5 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H5V1.5A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5V2h2.5a1 1 0 0 1 1 1zM6 1.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V2H6v-.5zM4 4v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4H4z"/>
+      </svg>`;
+    btnBorrar.onclick = () => borrarAlimento(alimento.id);
+
+    contenedorAccion.appendChild(btnAñadir);
+    contenedorAccion.appendChild(btnEditar);
+    contenedorAccion.appendChild(btnBorrar);
+    tdAccion.appendChild(contenedorAccion);
+
+    fila.appendChild(tdNombre);
+    fila.appendChild(tdMacros);
+    fila.appendChild(tdAccion);
+
+    tbody.appendChild(fila);
+  });
+
+  cargando(false);
 }
 
-export function escanearAlimento() {
+function añadirAlimentoAComida(alimento) {
+  console.log("Insertando alimento: ", alimento);
+}
+
+function debounce(func, delay) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+}
+
+function crearFilaAlimento(alimento) {
+  const fila = document.createElement("tr");
+
+  const tdNombre = document.createElement("td");
+  tdNombre.className = "celda-nombre";
+  tdNombre.textContent = `${alimento.nombre} ${alimento.marca ? '(' + alimento.marca + ')' : ''}`;
+
+  const tdMacros = document.createElement("td");
+  tdMacros.className = "celda-macros";
+  tdMacros.innerHTML = `
+    <div><span>C:</span> ${alimento.carbos}g</div>
+    <div><span>P:</span> ${alimento.protes}g</div>
+    <div><span>G:</span> ${alimento.grasas}g</div>
+    <div><span>Kcal:</span> ${alimento.kcal}</div>
+  `;
+
+  const tdAccion = document.createElement("td");
+  tdAccion.className = "celda-accion";
+
+  const contenedorAccion = document.createElement("div");
+  contenedorAccion.className = "accion-contenedor";
+
+  const btnAñadir = document.createElement("button");
+  btnAñadir.className = "icono-btn";
+  btnAñadir.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M8 1a.5.5 0 0 1 .5.5V7h5.5a.5.5 0 0 1 0 1H8.5v5.5a.5.5 0 0 1-1 0V8H2a.5.5 0 0 1 0-1h5.5V1.5A.5.5 0 0 1 8 1z"/>
+    </svg>`;
+    btnAñadir.onclick = () => añadirAlimentoAComida(alimento);
+
+  const btnEditar = document.createElement("button");
+  btnEditar.className = "icono-btn";
+  btnEditar.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zM10.5 3.207 2 11.707V13h1.293l8.5-8.5-1.293-1.293z"/>
+    </svg>`;
+  btnEditar.onclick = () => editarValoresAlimento(alimento.id);
+
+  const btnBorrar = document.createElement("button");
+  btnBorrar.className = "icono-btn";
+  btnBorrar.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm5 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+      <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H5V1.5A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5V2h2.5a1 1 0 0 1 1 1zM6 1.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V2H6v-.5zM4 4v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4H4z"/>
+    </svg>`;
+  btnBorrar.onclick = () => borrarAlimento(alimento.id);
+
+  contenedorAccion.appendChild(btnAñadir);
+  contenedorAccion.appendChild(btnEditar);
+  contenedorAccion.appendChild(btnBorrar);
+  tdAccion.appendChild(contenedorAccion);
+
+  fila.appendChild(tdNombre);
+  fila.appendChild(tdMacros);
+  fila.appendChild(tdAccion);
+
+  return fila;
+}
+
+let escaneoEnCurso = false;
+
+export async function escanearAlimento() {
   const container = document.getElementById("scanner-container");
   container.classList.remove("oculto");
+
+  const loader = document.getElementById("loader");
+  loader.classList.remove("oculto");
+
+  escaneoEnCurso = false; // reiniciar al abrir
 
   Quagga.init({
     inputStream: {
@@ -473,7 +663,7 @@ export function escanearAlimento() {
       type: "LiveStream",
       target: document.querySelector("#scanner"),
       constraints: {
-        facingMode: "environment" // cámara trasera
+        facingMode: "environment"
       }
     },
     decoder: {
@@ -482,47 +672,241 @@ export function escanearAlimento() {
   }, function (err) {
     if (err) {
       alert(err);
-      alert("No se pudo iniciar la cámara.");
       container.classList.add("oculto");
       return;
     }
     Quagga.start();
+    loader.classList.add("oculto");
   });
 
   Quagga.onDetected(async function (data) {
+    if (escaneoEnCurso) return;
+    escaneoEnCurso = true;
+
     const codigoBarras = data.codeResult.code;
     console.log("Código detectado:", codigoBarras);
 
     Quagga.stop();
     container.classList.add("oculto");
 
-    // Buscar alimento por código en Open Food Facts
+    const resultados = await obtenerAlimentos(codigoBarras);
+
+    if (resultados.length > 0) {
+      // añadirAlimento(resultados[0]);
+      console.log("Existe, se añade a la comida.");
+      return;
+    }
+
     const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${codigoBarras}.json`);
     const json = await res.json();
 
     if (json.status === 1) {
-      const n = json.product.nutriments;
+      const p = json.product;
+
+      const nombre = p.product_name || "Sin nombre";
+      const marca = p.brands || "Sin marca";
+      const n = p.nutriments;
       const carbos = n.carbohydrates_100g || 0;
       const protes = n.proteins_100g || 0;
       const grasas = n.fat_100g || 0;
       const kcal = n["energy-kcal_100g"] || 0;
 
-      console.log({ carbos, protes, grasas, kcal });
+      registrarAlimento({
+        nombre,
+        marca,
+        codigo: codigoBarras,
+        carbos,
+        protes,
+        grasas,
+        kcal
+      });
 
-      // Aquí puedes continuar el flujo: abrir modal, guardar, etc.
+      abrirModalAlimentos();
     } else {
       alert("Producto no encontrado.");
     }
   });
 
-  // Botón para cerrar el scanner
   const cerrarBtn = document.getElementById("cerrar-scanner");
   cerrarBtn.onclick = () => {
     Quagga.stop();
     container.classList.add("oculto");
+    abrirModalAlimentos();
   };
 }
 
+
+async function añadirAlimento(datos) {
+  cargando(true);
+
+  // Eliminar modal anterior si ya existe
+  let modal = document.getElementById("modal-editar-alimento");
+  if (modal) modal.remove();
+
+  // Crear modal
+  modal = document.createElement("div");
+  modal.id = "modal-editar-alimento";
+  modal.className = "modal-registrar";
+  modal.innerHTML = `
+    <div class="modal-contenido">
+      <p class="modal-titulo">Añadir alimento</p>
+
+      <div class="grupo-campo">
+        <label for="edit-nombre">Nombre</label>
+        <input id="edit-nombre" value="">
+      </div>
+      <div class="grupo-campo">
+        <label for="edit-marca">Marca</label>
+        <input id="edit-marca" value="">
+      </div>
+      <div class="grupo-campo">
+        <label for="edit-carbos">Carbohidratos</label>
+        <input id="edit-carbos" type="number" value="">
+      </div>
+      <div class="grupo-campo">
+        <label for="edit-protes">Proteínas</label>
+        <input id="edit-protes" type="number" value="">
+      </div>
+      <div class="grupo-campo">
+        <label for="edit-grasas">Grasas</label>
+        <input id="edit-grasas" type="number" value="">
+      </div>
+      <div class="grupo-campo">
+        <label for="edit-kcal">Kcal</label>
+        <input id="edit-kcal" type="number" value="">
+      </div>
+
+      <div class="separador-bloque"></div>
+
+      <button id="btn-guardar-edicion" class="modal-confirmar">Guardar</button>
+      <button id="btn-cerrar-edicion" class="modal-cerrar">Cancelar</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.classList.remove("oculto");
+  cargando(false);
+
+  // Cancelar
+  document.getElementById("btn-cerrar-edicion").onclick = () => { 
+    modal.remove();
+
+    abrirModalAlimentos();
+  };
+
+  // Guardar nuevo alimento
+  document.getElementById("btn-guardar-edicion").onclick = async () => {
+    cargando(true);
+
+    const nuevoAlimento = {
+      nombre: document.getElementById("edit-nombre").value.trim() || 'Sin nombre',
+      marca: document.getElementById("edit-marca").value.trim() || 'Sin marca',
+      carbos: parseFloat(document.getElementById("edit-carbos").value) || 0,
+      protes: parseFloat(document.getElementById("edit-protes").value) || 0,
+      grasas: parseFloat(document.getElementById("edit-grasas").value) || 0,
+      kcal: parseFloat(document.getElementById("edit-kcal").value) || 0,
+      codigo: null
+    };
+
+    await registrarAlimento(nuevoAlimento);
+    modal.remove();
+
+    cargando(false);
+    abrirModalAlimentos(); // recarga la tabla
+  };
+}
+
+
+async function editarValoresAlimento(id) {
+  cargando(true);
+
+  const datos = (await obtenerAlimentos(id))[0];
+
+  console.log("datos:", datos);
+
+
+  // Eliminar modal anterior si ya existe
+  let modal = document.getElementById("modal-editar-alimento");
+  if (modal) modal.remove();
+
+  // Crear modal
+  modal = document.createElement("div");
+  modal.id = "modal-editar-alimento";
+  modal.className = "modal-registrar"; // reutiliza estilos existentes
+  modal.innerHTML = `
+  <div class="modal-contenido">
+    <p class="modal-titulo">Editar alimento</p>
+
+    <div class="grupo-campo">
+      <label for="edit-nombre">Nombre</label>
+      <input id="edit-nombre" value="${datos.nombre ?? ''}">
+    </div>
+    <div class="grupo-campo">
+      <label for="edit-marca">Marca</label>
+      <input id="edit-marca" value="${datos.marca ?? ''}">
+    </div>
+    <div class="grupo-campo">
+      <label for="edit-carbos">Carbohidratos</label>
+      <input id="edit-carbos" type="number" value="${datos.carbos ?? 0}">
+    </div>
+    <div class="grupo-campo">
+      <label for="edit-protes">Proteínas</label>
+      <input id="edit-protes" type="number" value="${datos.protes ?? 0}">
+    </div>
+    <div class="grupo-campo">
+      <label for="edit-grasas">Grasas</label>
+      <input id="edit-grasas" type="number" value="${datos.grasas ?? 0}">
+    </div>
+    <div class="grupo-campo">
+      <label for="edit-kcal">Kcal</label>
+      <input id="edit-kcal" type="number" value="${datos.kcal ?? 0}">
+    </div>
+
+    <div class="separador-bloque"></div>
+
+    <button id="btn-guardar-edicion" class="modal-confirmar">Guardar</button>
+    <button id="btn-cerrar-edicion" class="modal-cerrar">Cancelar</button>
+  </div>
+`;
+  document.body.appendChild(modal);
+
+  modal.classList.remove("oculto");
+  cargando(false);
+
+  // Cancelar
+  document.getElementById("btn-cerrar-edicion").onclick = () => modal.remove();
+
+  // Guardar
+  document.getElementById("btn-guardar-edicion").onclick = async () => {
+    cargando(true);
+
+    const alimentoActualizado = {
+      id,
+      nombre: document.getElementById("edit-nombre").value.trim(),
+      marca: document.getElementById("edit-marca").value.trim(),
+      carbos: parseFloat(document.getElementById("edit-carbos").value),
+      protes: parseFloat(document.getElementById("edit-protes").value),
+      grasas: parseFloat(document.getElementById("edit-grasas").value),
+      kcal: parseFloat(document.getElementById("edit-kcal").value)
+    };
+
+    await actualizarAlimento(alimentoActualizado);
+    modal.remove();
+
+    cargando(false);
+
+    abrirModalAlimentos(); // recarga la tabla
+  };
+}
+
+
+function borrarAlimento(id) {
+  eliminarAlimento(id);
+
+  abrirModalAlimentos();
+}
+
+function abrirFormularioManual() {}
 
 function calcularRecomendacionNutricionalAutomatica() {
   console.log(camposDatosPersonales.recomendacionNutricionalAutomatica.checked)
@@ -809,7 +1193,14 @@ function calcularMacros(peso, kcalTotales, tipoDieta) {
   };
 }
 
-
+function cargando(mostrar) {
+  if (mostrar) {
+    const loader = document.getElementById("loader");
+    loader.classList.remove("oculto");
+  } else {
+    loader.classList.add("oculto");
+  }
+}
 
 
 

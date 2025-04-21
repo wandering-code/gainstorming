@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, doc, collection, addDoc, setDoc, getDocs, getDoc, deleteDoc, query, collectionGroup, where } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
+  onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getFirestore, doc, collection, addDoc, setDoc, getDocs, getDoc, 
+  deleteDoc, query, collectionGroup, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 import { renderizarTablaMedidas, calcularTMB, obtenerFactorActividad, ajustarKcalPorObjetivo, calcularMacros, cargarVista } from "./main.js";
 
@@ -440,6 +442,184 @@ export async function obtenerComidas(fecha = null) {
     });
   }
 }
+
+export async function registrarAlimento(datos) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  if (!auth.currentUser) {
+    alert("Usuario no autenticado");
+    return;
+  }
+
+  const loader = document.getElementById('loader');
+  loader.classList.remove('oculto');
+
+  try {
+
+    const alimentosRef = collection(db, `usuarios/${user.uid}/alimentos`);
+    const docRef = await addDoc(alimentosRef, {
+        nombre: datos.nombre,
+        marca: datos.marca,
+        codigo: datos.codigo,
+        carbos: datos.carbos,
+        protes: datos.protes,
+        grasas: datos.grasas,
+        kcal: datos.kcal
+    });
+
+    console.log("ALimento guardado con ID:", docRef.id);
+
+  } catch (error) {
+    console.error("Error al guardar alimento:", error);
+  } finally {
+    loader.classList.add('oculto');
+  }
+}
+
+export async function obtenerAlimentos(texto) {
+  const user = auth.currentUser;
+  if (!user) return [];
+
+  const colRef = collection(db, `usuarios/${user.uid}/alimentos`);
+
+  if (texto && texto.trim() !== "") {
+    const textoTrim = texto.trim();
+    const textoBusqueda = textoTrim.toLowerCase();
+
+    // Buscar por ID directamente
+    try {
+      const docRef = doc(db, `usuarios/${user.uid}/alimentos/${textoTrim}`);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        return [{
+          id: snap.id,
+          nombre: data.nombre,
+          marca: data.marca,
+          codigo: data.codigo,
+          carbos: data.carbos,
+          protes: data.protes,
+          grasas: data.grasas,
+          kcal: data.kcal
+        }];
+      }
+    } catch (e) {
+      // continuar si no existe
+    }
+
+    // Si es un código de barras (solo números)
+    if (/^\d+$/.test(textoTrim)) {
+      const qCodigo = query(colRef, where("codigo", "==", textoTrim));
+      const snapCodigo = await getDocs(qCodigo);
+      return snapCodigo.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          nombre: data.nombre,
+          marca: data.marca,
+          codigo: data.codigo,
+          carbos: data.carbos,
+          protes: data.protes,
+          grasas: data.grasas,
+          kcal: data.kcal
+        };
+      });
+    }
+
+    // 🔍 BÚSQUEDA LOCAL: siempre usar includes
+    const snapshot = await getDocs(colRef);
+    const resultados = snapshot.docs.filter(doc => {
+      const data = doc.data();
+      return (
+        data.nombre?.toLowerCase().includes(textoBusqueda) ||
+        data.marca?.toLowerCase().includes(textoBusqueda)
+      );
+    });
+
+    console.log("Búsqueda local (includes):", textoBusqueda, resultados.length);
+
+    return resultados.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        nombre: data.nombre,
+        marca: data.marca,
+        codigo: data.codigo,
+        carbos: data.carbos,
+        protes: data.protes,
+        grasas: data.grasas,
+        kcal: data.kcal
+      };
+    });
+  }
+
+  // Si no hay texto → devolver todos
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      nombre: data.nombre,
+      marca: data.marca,
+      codigo: data.codigo,
+      carbos: data.carbos,
+      protes: data.protes,
+      grasas: data.grasas,
+      kcal: data.kcal
+    };
+  });
+}
+
+
+
+
+
+
+export async function eliminarAlimento(id) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const loader = document.getElementById('loader');
+  loader.classList.remove('oculto');
+
+  try {
+    const docRef = doc(db, `usuarios/${user.uid}/alimentos/${id}`);
+    await deleteDoc(docRef);
+    console.log("Alimento eliminado:", id);
+  } catch (error) {
+    console.error("Error al eliminar alimento:", error);
+  } finally {
+    loader.classList.add('oculto');
+  }
+}
+
+export async function actualizarAlimento(alimento) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const loader = document.getElementById("loader");
+  loader.classList.remove("oculto");
+
+  try {
+    const docRef = doc(db, `usuarios/${user.uid}/alimentos/${alimento.id}`);
+    await updateDoc(docRef, {
+      nombre: alimento.nombre,
+      marca: alimento.marca,
+      carbos: Number(alimento.carbos),
+      protes: Number(alimento.protes),
+      grasas: Number(alimento.grasas),
+      kcal: Number(alimento.kcal)
+    });
+
+    console.log("Alimento actualizado:", alimento.id);
+  } catch (error) {
+    console.error("Error al actualizar alimento:", error);
+  } finally {
+    loader.classList.add("oculto");
+  }
+}
+
 
 // #endregion
 
