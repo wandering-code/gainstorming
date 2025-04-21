@@ -1,6 +1,6 @@
 import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, 
   guardarDatosPersonales, obtenerComidas, registrarAlimento, obtenerAlimentos, 
-  eliminarAlimento, actualizarAlimento, registrarAlimentoAComida } from '../scripts/dataBaseManager.js';
+  eliminarAlimento, actualizarAlimento, registrarAlimentoAComida, eliminarAlimentoDeComida } from '../scripts/dataBaseManager.js';
 
 const Quagga = window.Quagga;
 
@@ -117,6 +117,8 @@ function cargarVistaRutinas() {
 }
 
 async function cargarVistaMedidas() {
+  cargando(true);
+
   cambiarVista("vista-medidas");
 
   await renderizarTablaMedidas();
@@ -134,20 +136,21 @@ async function cargarVistaComidas() {
   actualizarTextoDia();
 
   await renderizarComidas();
-
-  cargando(false);
 }
 
 function cargarVistaAjustes() {
+  cargando(true);
   cambiarVista("vista-ajustes")
+  setTimeout(() => {
+    cargando(false);
+  }, 300); // 300 ms de espera mínima
 }
 
 async function cargarVistaAjustesDatosPersonales() {
   document.getElementById("vista-ajustes-botones").classList.add('oculto');
   document.getElementById("vista-ajustes-datos-personales").classList.remove('oculto');
 
-  const loader = document.getElementById("loader");
-  loader.classList.remove("oculto");
+  cargando(true);
 
   const datos = await obtenerDatosPersonales();
   if (datos) {
@@ -171,12 +174,11 @@ async function cargarVistaAjustesDatosPersonales() {
     calcularRecomendacionNutricionalAutomatica()
   }
 
-  loader.classList.add("oculto");
+  cargando(false);
 }
 
 function cambiarVista(vista, callback = null) {
   var titulo;
-  const loader = document.getElementById('loader');
 
   window.scrollTo(0, 0);
 
@@ -203,8 +205,6 @@ function cambiarVista(vista, callback = null) {
 
   localStorage.setItem("ultima-vista", vista);
 
-  loader.classList.remove('oculto');
-
   setTimeout(() => {
     document.getElementById("nombre-seccion") ? document.getElementById("nombre-seccion").textContent = titulo : "";
 
@@ -227,222 +227,242 @@ function cambiarVista(vista, callback = null) {
     if (typeof callback === 'function') {
       callback();
     }
-
-    loader.classList.add('oculto');
   }, 300);
 }
 
 async function renderizarTablaMedidas() {
+  cargando(true); // Asegúrate de mostrar el loader al inicio
+
   const listaMedidasDiv = document.getElementById("listaMedidas");
   listaMedidasDiv.innerHTML = "";
 
-  const medidas = await obtenerMedidas();
-  if (!medidas.length) {
-    const mensaje = document.createElement("p");
-    mensaje.className = "text-center text-gray-500";
-    mensaje.textContent = "No hay medidas registradas.";
-    listaMedidasDiv.appendChild(mensaje);
-    return;
+  try {
+    const medidas = await obtenerMedidas();
+
+    if (!medidas.length) {
+      const mensaje = document.createElement("p");
+      mensaje.className = "text-center text-gray-500";
+      mensaje.textContent = "No hay medidas registradas.";
+      listaMedidasDiv.appendChild(mensaje);
+      return;
+    }
+
+    const tabla = document.createElement("table");
+    tabla.className = "w-full text-sm text-left border border-gray-300 rounded overflow-hidden";
+
+    const thead = document.createElement("thead");
+    const filaCabecera = document.createElement("tr");
+    filaCabecera.className = "bg-gray-200 text-gray-700";
+
+    const thFecha = document.createElement("th");
+    thFecha.className = "p-2";
+    thFecha.textContent = "Fecha";
+
+    const thValor = document.createElement("th");
+    thValor.className = "p-2";
+    thValor.textContent = "Peso";
+
+    const thAcciones = document.createElement("th");
+    thAcciones.className = "p-2";
+    thAcciones.textContent = "Acciones";
+
+    filaCabecera.appendChild(thFecha);
+    filaCabecera.appendChild(thValor);
+    filaCabecera.appendChild(thAcciones);
+    thead.appendChild(filaCabecera);
+    tabla.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    medidas
+      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+      .forEach(medida => {
+        const fila = document.createElement("tr");
+        fila.className = "border-t hover:bg-gray-50";
+
+        const tdFecha = document.createElement("td");
+        tdFecha.className = "p-2";
+        const fecha = new Date(medida.fecha);
+        const fechaFormateada = fecha.toLocaleDateString("es-ES", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric"
+        });
+        tdFecha.textContent = fechaFormateada;
+
+        const tdValor = document.createElement("td");
+        tdValor.className = "p-2";
+        tdValor.textContent = `${medida.valor} kg`;
+
+        const tdAcciones = document.createElement("td");
+        tdAcciones.className = "p-2";
+
+        const boton = document.createElement("button");
+        boton.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded";
+        boton.textContent = "Eliminar";
+        boton.addEventListener("click", async () => {
+          await eliminarMedida(medida.id);
+          await renderizarTablaMedidas();
+        });
+
+        tdAcciones.appendChild(boton);
+        fila.appendChild(tdFecha);
+        fila.appendChild(tdValor);
+        fila.appendChild(tdAcciones);
+        tbody.appendChild(fila);
+      });
+
+    tabla.appendChild(tbody);
+    listaMedidasDiv.appendChild(tabla);
+
+  } catch (error) {
+    console.error("Error al renderizar tabla de medidas:", error);
+  } finally {
+    cargando(false); // Siempre se ejecuta, aunque haya error
   }
-
-  const tabla = document.createElement("table");
-  tabla.className = "w-full text-sm text-left border border-gray-300 rounded overflow-hidden";
-
-  const thead = document.createElement("thead");
-  const filaCabecera = document.createElement("tr");
-  filaCabecera.className = "bg-gray-200 text-gray-700";
-
-  const thFecha = document.createElement("th");
-  thFecha.className = "p-2";
-  thFecha.textContent = "Fecha";
-
-  const thValor = document.createElement("th");
-  thValor.className = "p-2";
-  thValor.textContent = "Peso";
-
-  const thAcciones = document.createElement("th");
-  thAcciones.className = "p-2";
-  thAcciones.textContent = "Acciones";
-
-  filaCabecera.appendChild(thFecha);
-  filaCabecera.appendChild(thValor);
-  filaCabecera.appendChild(thAcciones);
-  thead.appendChild(filaCabecera);
-  tabla.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-
-  medidas
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-    .forEach(medida => {
-      const fila = document.createElement("tr");
-      fila.className = "border-t hover:bg-gray-50";
-
-      const tdFecha = document.createElement("td");
-      tdFecha.className = "p-2";
-      const fecha = new Date(medida.fecha);
-      const fechaFormateada = fecha.toLocaleDateString("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      });
-      tdFecha.textContent = fechaFormateada;
-
-      const tdValor = document.createElement("td");
-      tdValor.className = "p-2";
-      tdValor.textContent = `${medida.valor} kg`;
-
-      const tdAcciones = document.createElement("td");
-      tdAcciones.className = "p-2";
-
-      const boton = document.createElement("button");
-      boton.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded";
-      boton.textContent = "Eliminar";
-      boton.addEventListener("click", async () => {
-        await eliminarMedida(medida.id);
-        await renderizarTablaMedidas();
-      });
-
-      tdAcciones.appendChild(boton);
-      fila.appendChild(tdFecha);
-      fila.appendChild(tdValor);
-      fila.appendChild(tdAcciones);
-      tbody.appendChild(fila);
-    });
-
-  tabla.appendChild(tbody);
-  listaMedidasDiv.appendChild(tabla);
 }
 
+
 async function renderizarComidas() {
+  cargando(true);
   const contenedor = document.getElementById("contenedor-comidas");
   contenedor.innerHTML = "";
 
   const fecha = document.getElementById("selector-calendario").value;
-  const comidas = await obtenerComidas(fecha);
+  const datos = await obtenerComidas(fecha);
+  const personales = await obtenerDatosPersonales();
+  const comidasGuardadas = datos?.comidas || {};
+  const comidasActivas = personales?.cantidadComidas || 0;
 
-  if (comidas && Object.keys(comidas).some(k => k.startsWith("comida"))) {
-    const claves = Object.keys(comidas).filter(k => k.startsWith("comida"));
-    const total = claves.length;
+  // Obtener el número máximo entre comidas guardadas y activas actuales
+  const totalBloques = Math.max(Object.keys(comidasGuardadas).length, comidasActivas);
 
-    for (let i = 1; i <= total; i++) {
-      const comida = comidas[`comida${i}`];
-      const alimentos = comida?.alimentos || [];
+  for (let i = 1; i <= totalBloques; i++) {
+    const nombreComida = `comida${i}`;
+    const alimentos = comidasGuardadas[nombreComida] || [];
 
-      const bloque = document.createElement("div");
-      bloque.className = "bloque-comida";
+    const bloque = document.createElement("div");
+    bloque.className = "bloque-comida";
 
-      const titulo = document.createElement("h3");
-      titulo.className = "titulo-comida";
-      titulo.textContent = `Comida ${i}`;
-      bloque.appendChild(titulo);
+    const titulo = document.createElement("h3");
+    titulo.className = "titulo-comida";
+    titulo.textContent = `Comida ${i}`;
+    bloque.appendChild(titulo);
 
-      const tabla = document.createElement("table");
-      tabla.className = "tabla-alimentos";
+    const tabla = document.createElement("table");
+    tabla.className = "tabla-alimentos";
 
-      const thead = document.createElement("thead");
-      thead.innerHTML = `
-        <tr>
-          <th>Alimento</th>
-          <th>C</th>
-          <th>P</th>
-          <th>G</th>
-          <th>Kcal</th>
-        </tr>
+    const thead = document.createElement("thead");
+    thead.innerHTML = `
+      <tr>
+        <th>Alimento</th>
+        <th>C</th>
+        <th>P</th>
+        <th>G</th>
+        <th>Kcal</th>
+        <th>Acción</th>
+      </tr>
+    `;
+    tabla.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    tbody.id = `cuerpo-${nombreComida}`;
+    alimentos.forEach(al => {
+      const fila = document.createElement("tr");
+      fila.id = `fila-${al.id}`;
+      fila.innerHTML = `
+        <td>${al.nombre} (${al.peso}g)${al.marca ? `<br><span class="marca">${al.marca}</span>` : ''}</td>
+        <td>${(al.carbos || 0).toFixed(1)}</td>
+        <td>${(al.protes || 0).toFixed(1)}</td>
+        <td>${(al.grasas || 0).toFixed(1)}</td>
+        <td>${(al.kcal || 0).toFixed(1)}</td>
+        <td>
+          <button class="icono-btn" onclick="borrarAlimentoDeComida('${al.id}', '${fecha}', '${nombreComida}')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm5 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+              <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H5V1.5A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5V2h2.5a1 1 0 0 1 1 1zM6 1.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V2H6v-.5zM4 4v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4H4z"/>
+            </svg>
+          </button>
+        </td>
       `;
-      tabla.appendChild(thead);
+      tbody.appendChild(fila);
+    });
 
-      const tbody = document.createElement("tbody");
-      tbody.id = `cuerpo-comida-${i}`;
-      alimentos.forEach(al => {
-        const fila = document.createElement("tr");
-        fila.innerHTML = `
-          <td>${al.nombre}${al.marca ? ` (${al.marca})` : ''}</td>
-          <td>${al.c}</td>
-          <td>${al.p}</td>
-          <td>${al.g}</td>
-          <td>${al.kcal}</td>
-        `;
-        tbody.appendChild(fila);
-      });
-      tabla.appendChild(tbody);
-      bloque.appendChild(tabla);
+    const totalCarbos = alimentos.reduce((sum, al) => sum + (al.carbos || 0), 0);
+    const totalProtes = alimentos.reduce((sum, al) => sum + (al.protes || 0), 0);
+    const totalGrasas = alimentos.reduce((sum, al) => sum + (al.grasas || 0), 0);
+    const totalKcal = alimentos.reduce((sum, al) => sum + (al.kcal || 0), 0);
 
-      const boton = document.createElement("button");
-      boton.className = "boton-anadir";
-      boton.textContent = "Añadir alimento";
-      boton.onclick = () => abrirModalAlimentos(i);
-      bloque.appendChild(boton);
+    const filaTotales = document.createElement("tr");
+    filaTotales.className = "bg-gray-100 font-semibold";
+    filaTotales.style = "background-color: #f7f7f7";
 
-      const hr = document.createElement("hr");
-      hr.className = "separador-comida";
-      bloque.appendChild(hr);
+    filaTotales.innerHTML = `
+      <td></td>
+      <td>${totalCarbos.toFixed(1)}</td>
+      <td>${totalProtes.toFixed(1)}</td>
+      <td>${totalGrasas.toFixed(1)}</td>
+      <td>${totalKcal.toFixed(1)}</td>
+      <td></td>
+    `;
 
-      contenedor.appendChild(bloque);
-    }
+    tbody.appendChild(filaTotales);
 
-  } else {
-    console.log("No hay datos guardados. Se crea la estructura según preferencias del usuario.");
-    const datos = await obtenerDatosPersonales();
-    const cantidadComidas = datos?.cantidadComidas || 0;
+    tabla.appendChild(tbody);
+    bloque.appendChild(tabla);
 
-    if (cantidadComidas != 0) {
-      for (let i = 1; i <= cantidadComidas; i++) {
-        const bloque = document.createElement("div");
-        bloque.className = "bloque-comida";
+    const boton = document.createElement("button");
+    boton.className = "boton-anadir";
+    boton.textContent = "Añadir alimento";
+    boton.onclick = () => abrirModalAlimentos(i);
+    bloque.appendChild(boton);
 
-        const titulo = document.createElement("h3");
-        titulo.className = "titulo-comida";
-        titulo.textContent = `Comida ${i}`;
-        bloque.appendChild(titulo);
+    const hr = document.createElement("hr");
+    hr.className = "separador-comida";
+    bloque.appendChild(hr);
 
-        const tabla = document.createElement("table");
-        tabla.className = "tabla-alimentos";
-
-        const thead = document.createElement("thead");
-        thead.innerHTML = `
-          <tr>
-            <th>Alimento</th>
-            <th>C</th>
-            <th>P</th>
-            <th>G</th>
-            <th>Kcal</th>
-          </tr>
-        `;
-        tabla.appendChild(thead);
-
-        const tbody = document.createElement("tbody");
-        tbody.id = `cuerpo-comida-${i}`;
-        tabla.appendChild(tbody);
-
-        bloque.appendChild(tabla);
-
-        const boton = document.createElement("button");
-        boton.className = "boton-anadir";
-        boton.textContent = "Añadir alimento";
-        boton.onclick = () => abrirModalAlimentos(i);
-        bloque.appendChild(boton);
-
-        const hr = document.createElement("hr");
-        hr.className = "separador-comida";
-        bloque.appendChild(hr);
-
-        contenedor.appendChild(bloque);
-      }
-    } else {
-      contenedor.innerHTML = "";
-
-      const aviso = document.createElement("div");
-      aviso.className = "aviso-comidas";
-      aviso.textContent = "Debes seleccionar la cantidad de comidas en Ajustes - Datos personales.";
-      contenedor.appendChild(aviso);
-    }
+    contenedor.appendChild(bloque);
   }
 
-  window.scrollTo(0, 0);
+  // Totales globales del día
+  let totalDiaCarbos = 0;
+  let totalDiaProtes = 0;
+  let totalDiaGrasas = 0;
+  let totalDiaKcal = 0;
+
+  Object.values(comidasGuardadas).forEach(alimentos => {
+    totalDiaCarbos += alimentos.reduce((sum, al) => sum + (al.carbos || 0), 0);
+    totalDiaProtes += alimentos.reduce((sum, al) => sum + (al.protes || 0), 0);
+    totalDiaGrasas += alimentos.reduce((sum, al) => sum + (al.grasas || 0), 0);
+    totalDiaKcal += alimentos.reduce((sum, al) => sum + (al.kcal || 0), 0);
+  });
+
+  // Mostrar datos
+  document.getElementById("carbohidratos-dia").textContent = `${totalDiaCarbos.toFixed(1)} / ${(Number(personales.carbohidratos) || 0).toFixed(1)} g`;
+  document.getElementById("proteinas-dia").textContent = `${totalDiaProtes.toFixed(1)} / ${(Number(personales.proteinas) || 0).toFixed(1)} g`;
+  document.getElementById("grasas-dia").textContent = `${totalDiaGrasas.toFixed(1)} / ${(Number(personales.grasas) || 0).toFixed(1)} g`;
+  document.getElementById("kcal-dia").textContent = `${totalDiaKcal.toFixed(1)} / ${(Number(personales.kcal) || 0).toFixed(1)} kcal`;
+
+  
+
+  // Actualizar barras
+  actualizarBarra("barra-carbohidratos", totalDiaCarbos, personales.carbohidratos || 1);
+  actualizarBarra("barra-proteinas", totalDiaProtes, personales.proteinas || 1);
+  actualizarBarra("barra-grasas", totalDiaGrasas, personales.grasas || 1);
+
+
+  cargando(false);
 }
 
 
+async function borrarAlimentoDeComida(id, fecha, nombreComida) {
+  cargando(true);
+  console.log("Borrando ID:", id);
+  await eliminarAlimentoDeComida(id, fecha, nombreComida);
+  renderizarComidas();
+}
+
+window.borrarAlimentoDeComida = borrarAlimentoDeComida;
 
 async function abrirModalAlimentos(comida) {
   cargando(true);
@@ -451,17 +471,19 @@ async function abrirModalAlimentos(comida) {
   modal.classList.remove("oculto");
 
   document.getElementById("btn-escanear").onclick = () => {
-    modal.classList.add("oculto");
-    escanearAlimento();
+    cargando(false);
+    escanearAlimento(comida);
   };
 
   document.getElementById("btn-manual").onclick = () => {
-    modal.classList.add("oculto");
-    añadirAlimento();
+    cargando(false);
+    console.log("Añadienod alimento : " +comida)
+    añadirAlimento(null, comida);
   };
 
   document.getElementById("btn-cerrar-modal").onclick = () => {
     modal.classList.add("oculto");
+    cargando(false);
   };
 
   const contenedor = document.getElementById("formulario-manual");
@@ -522,13 +544,14 @@ async function añadirAlimentoAComida(alimento, comida) {
 
   await registrarAlimentoAComida({
     nombre: alimento.nombre,
-    c: alimento.c,
-    p: alimento.p,
-    g: alimento.g,
-    kcal: alimento.kcal
+    carbos: alimento.carbos,
+    protes: alimento.protes,
+    grasas: alimento.grasas,
+    kcal: alimento.kcal,
+    peso: alimento.peso
   }, comida);
 
-  abrirModalAlimentos();
+  renderizarComidas();
 }
 
 
@@ -540,7 +563,7 @@ function debounce(func, delay) {
   };
 }
 
-function crearFilaAlimento(alimento) {
+function crearFilaAlimento(alimento, comida) {
   const fila = document.createElement("tr");
 
   const tdNombre = document.createElement("td");
@@ -568,7 +591,7 @@ function crearFilaAlimento(alimento) {
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
       <path d="M8 1a.5.5 0 0 1 .5.5V7h5.5a.5.5 0 0 1 0 1H8.5v5.5a.5.5 0 0 1-1 0V8H2a.5.5 0 0 1 0-1h5.5V1.5A.5.5 0 0 1 8 1z"/>
     </svg>`;
-    btnAñadir.onclick = () => añadirAlimentoAComida(alimento);
+    btnAñadir.onclick = () => abrirModalSeleccionPeso(alimento, comida);
 
   const btnEditar = document.createElement("button");
   btnEditar.className = "icono-btn";
@@ -599,14 +622,95 @@ function crearFilaAlimento(alimento) {
   return fila;
 }
 
+function abrirModalSeleccionPeso(alimento, comida) {
+  const modalPrevio = document.getElementById("modal-seleccion-peso");
+  if (modalPrevio) modalPrevio.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "modal-seleccion-peso";
+  modal.className = "modal";
+  modal.innerHTML = `
+    <div class="modal-contenido">
+      <h2>Selecciona el peso (g)</h2>
+      <input type="number" id="input-peso" value="100" placeholder="Ej: 100" class="input" min="1" />
+      <div id="resumen-nutricional" class="resumen-nutricional"></div>
+      <div class="botones-modal">
+        <button id="btn-cancelar-peso" class="btn btn-secundario">Cancelar</button>
+        <button id="btn-confirmar-peso" class="btn">Añadir</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  setTimeout(() => modal.classList.add("activo"), 10);
+
+  const inputPeso = modal.querySelector("#input-peso");
+  const resumen = modal.querySelector("#resumen-nutricional");
+
+  const actualizarResumen = () => {
+    let peso = parseFloat(inputPeso.value);
+    if (isNaN(peso) || peso <= 0) peso = 100;
+  
+    const mult = peso / 100;
+    const c = (alimento.carbos * mult).toFixed(1);
+    const p = (alimento.protes * mult).toFixed(1);
+    const g = (alimento.grasas * mult).toFixed(1);
+    const kcal = Math.round(alimento.kcal * mult);
+  
+    resumen.innerHTML = `
+      <div class="fila-resumen">
+        <div><strong>${c}g</strong><br>Carbohidratos</div>
+        <div><strong>${p}g</strong><br>Proteínas</div>
+        <div><strong>${g}g</strong><br>Grasas</div>
+        <div><strong>${kcal}</strong><br>Kcal</div>
+      </div>
+    `;
+  };
+  
+
+  inputPeso.addEventListener("input", actualizarResumen);
+
+  actualizarResumen(); // Llamada inicial al cargar el modal
+
+  document.getElementById("btn-confirmar-peso").onclick = () => {
+    cargando(true);
+
+    const peso = parseInt(inputPeso.value);
+    if (isNaN(peso) || peso <= 0) return alert("Introduce un peso válido.");
+  
+    console.log("Añadiendo peso a comida: " + comida);
+  
+    const factor = peso / 100;
+  
+    alimento.peso = peso;
+    alimento.carbos = Math.round((alimento.carbos * factor) * 10) / 10;
+    alimento.protes = Math.round((alimento.protes * factor) * 10) / 10;
+    alimento.grasas = Math.round((alimento.grasas * factor) * 10) / 10;
+    alimento.kcal   = Math.round((alimento.kcal * factor) * 10) / 10;
+  
+    añadirAlimentoAComida(alimento, comida);
+    modal.remove();
+  };
+
+  document.getElementById("btn-cancelar-peso").onclick = () => {
+    modal.remove();
+  };
+}
+
+
+
+
+
+
 let escaneoEnCurso = false;
 
-export async function escanearAlimento() {
+export async function escanearAlimento(comida) {
   const container = document.getElementById("scanner-container");
   container.classList.remove("oculto");
 
-  const loader = document.getElementById("loader");
-  loader.classList.remove("oculto");
+  console.log(comida);
+
+  cargando(true);
 
   escaneoEnCurso = false; // reiniciar al abrir
 
@@ -629,7 +733,7 @@ export async function escanearAlimento() {
       return;
     }
     Quagga.start();
-    loader.classList.add("oculto");
+    cargando(false);
   });
 
   Quagga.onDetected(async function (data) {
@@ -674,7 +778,7 @@ export async function escanearAlimento() {
         kcal
       });
 
-      abrirModalAlimentos();
+      abrirModalAlimentos(comida);
     } else {
       alert("Producto no encontrado.");
     }
@@ -684,12 +788,12 @@ export async function escanearAlimento() {
   cerrarBtn.onclick = () => {
     Quagga.stop();
     container.classList.add("oculto");
-    abrirModalAlimentos();
+    abrirModalAlimentos(comida);
   };
 }
 
 
-async function añadirAlimento(datos) {
+async function añadirAlimento(datos, comida) {
   cargando(true);
 
   let modal = document.getElementById("modal-editar-alimento");
@@ -742,7 +846,7 @@ async function añadirAlimento(datos) {
 
   document.getElementById("btn-cerrar-edicion").onclick = () => {
     modal.remove();
-    abrirModalAlimentos();
+    abrirModalAlimentos(comida);
   };
 
   document.getElementById("btn-guardar-edicion").onclick = async () => {
@@ -762,7 +866,7 @@ async function añadirAlimento(datos) {
     modal.remove();
 
     cargando(false);
-    abrirModalAlimentos();
+    abrirModalAlimentos(comida);
   };
 }
 
@@ -822,7 +926,6 @@ async function editarValoresAlimento(id) {
   document.body.appendChild(modal);
 
   modal.classList.remove("oculto");
-  cargando(false);
 
   // Cancelar
   document.getElementById("btn-cerrar-edicion").onclick = () => modal.remove();
@@ -1001,9 +1104,19 @@ function actualizarTextoDia() {
 }
 
 function actualizarBarra(idBarra, valor, objetivo) {
+  const barra = document.getElementById(idBarra);
+  if (!barra) return;
+
   const porcentaje = Math.min((valor / objetivo) * 100, 100);
-  document.getElementById(idBarra).style.width = porcentaje + "%";
+  barra.style.width = porcentaje + "%";
+
+  if (valor > objetivo) {
+    barra.classList.add("bg-red-500");
+  } else {
+    barra.classList.remove("bg-red-500");
+  }
 }
+
 
 
 // ONCLICKS
@@ -1025,11 +1138,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("dia-anterior")?.addEventListener("click", () => {
     fechaActual.setDate(fechaActual.getDate() - 1);
     actualizarTextoDia();
+    renderizarComidas();
   });
   
   document.getElementById("dia-siguiente")?.addEventListener("click", () => {
     fechaActual.setDate(fechaActual.getDate() + 1);
     actualizarTextoDia();
+    renderizarComidas();
   });
   
   document.getElementById("texto-dia")?.addEventListener("click", () => {
@@ -1037,8 +1152,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   document.getElementById("selector-calendario")?.addEventListener("change", (e) => {
+    cargando(true);
     fechaActual = new Date(e.target.value);
     actualizarTextoDia();
+    renderizarComidas();
   });
 });
 
@@ -1144,14 +1261,18 @@ function calcularMacros(peso, kcalTotales, tipoDieta) {
   };
 }
 
-function cargando(mostrar) {
-  if (mostrar) {
-    const loader = document.getElementById("loader");
+function cargando(estado) {
+  const loader = document.getElementById("loader");
+  if (!loader) return;
+
+  if (estado) {
     loader.classList.remove("oculto");
   } else {
     loader.classList.add("oculto");
   }
 }
+
+
 
 
 

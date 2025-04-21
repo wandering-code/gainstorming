@@ -4,7 +4,8 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
 import { getFirestore, doc, collection, addDoc, setDoc, getDocs, getDoc, 
   deleteDoc, query, collectionGroup, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-import { renderizarTablaMedidas, calcularTMB, obtenerFactorActividad, ajustarKcalPorObjetivo, calcularMacros, cargarVista } from "./main.js";
+import { renderizarTablaMedidas, calcularTMB, obtenerFactorActividad, 
+  ajustarKcalPorObjetivo, calcularMacros, cargarVista } from "./main.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDn4D6i9ETBbIvhcxhyzJcnK_CiSFMEjqk",
@@ -406,42 +407,46 @@ export async function obtenerDatosPersonales() {
   };
 }
 
-export async function obtenerComidas(fecha = null) {
+export async function obtenerComidas(fecha) {
   const user = auth.currentUser;
-  if (!user) return [];
+  if (!user || !fecha) return null;
 
-  if (fecha) {
-    const docRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
-    const snapshot = await getDoc(docRef);
+  const baseRef = collection(db, `usuarios/${user.uid}/comidas/${fecha}/comidas`);
+  const snapshot = await getDocs(baseRef);
 
-    if (!snapshot.exists()) return null;
-
-    const data = snapshot.data();
-    return {
-      id: snapshot.id,
-      comidasActivas: data.comidasActivas,
-      ...Object.fromEntries(
-        Object.entries(data).filter(([key]) => key.startsWith("comida"))
-      ),
-      resumenDiario: data.resumenDiario || null
-    };
-  } else {
-    const colRef = collection(db, `usuarios/${user.uid}/comidas`);
-    const snapshot = await getDocs(colRef);
-
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        comidasActivas: data.comidasActivas,
-        ...Object.fromEntries(
-          Object.entries(data).filter(([key]) => key.startsWith("comida"))
-        ),
-        resumenDiario: data.resumenDiario || null
-      };
-    });
+  if (snapshot.empty) {
+    console.warn("⚠️ No hay comidas para esta fecha.");
+    return null;
   }
+
+  const comidas = {};
+
+  // Cargar todas las subcolecciones "alimentos" en paralelo
+  await Promise.all(
+    snapshot.docs.map(async (docSnap) => {
+      const nombreComida = docSnap.id;
+      const alimentosRef = collection(docSnap.ref, "alimentos");
+      const alimentosSnap = await getDocs(alimentosRef);
+      const alimentos = alimentosSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      comidas[nombreComida] = alimentos;
+    })
+  );
+
+  return {
+    fecha,
+    comidas
+  };
 }
+
+
+
+
+
+
+
 
 export async function registrarAlimento(datos) {
   const user = auth.currentUser;
@@ -462,10 +467,10 @@ export async function registrarAlimento(datos) {
         nombre: datos.nombre,
         marca: datos.marca,
         codigo: datos.codigo,
-        carbos: datos.carbos,
-        protes: datos.protes,
-        grasas: datos.grasas,
-        kcal: datos.kcal
+        carbos: Math.round(datos.carbos),
+        protes: Math.round(datos.protes),
+        grasas: Math.round(datos.grasas),
+        kcal: Math.round(datos.kcal)
     });
 
     console.log("Alimento: ", datos);
@@ -503,7 +508,8 @@ export async function obtenerAlimentos(texto) {
           carbos: data.carbos,
           protes: data.protes,
           grasas: data.grasas,
-          kcal: data.kcal
+          kcal: data.kcal,
+          peso: data.peso
         }];
       }
     } catch (e) {
@@ -524,7 +530,8 @@ export async function obtenerAlimentos(texto) {
           carbos: data.carbos,
           protes: data.protes,
           grasas: data.grasas,
-          kcal: data.kcal
+          kcal: data.kcal,
+          peso: data.peso
         };
       });
     }
@@ -551,7 +558,8 @@ export async function obtenerAlimentos(texto) {
         carbos: data.carbos,
         protes: data.protes,
         grasas: data.grasas,
-        kcal: data.kcal
+        kcal: data.kcal,
+        peso: data.peso
       };
     });
   }
@@ -568,7 +576,8 @@ export async function obtenerAlimentos(texto) {
       carbos: data.carbos,
       protes: data.protes,
       grasas: data.grasas,
-      kcal: data.kcal
+      kcal: data.kcal,
+      peso: data.peso
     };
   });
 }
@@ -578,41 +587,45 @@ export async function registrarAlimentoAComida(alimento, comidaIndex) {
   if (!user) return;
 
   const fecha = document.getElementById("selector-calendario").value;
-  const docRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
-  const snapshot = await getDoc(docRef);
+  const nombreComida = `comida${comidaIndex}`.trim();
 
-  // Sanear alimento: eliminar claves undefined
-  const alimentoLimpio = {
-    nombre: alimento.nombre || 'Sin nombre',
-    c: alimento.c ?? 0,
-    p: alimento.p ?? 0,
-    g: alimento.g ?? 0,
-    kcal: alimento.kcal ?? 0
-  };
-
-  let data;
-
-  if (snapshot.exists()) {
-    const actual = snapshot.data();
-    const comida = actual[`comida${comidaIndex}`]?.alimentos || [];
-    comida.push(alimentoLimpio);
-
-    data = {
-      ...actual,
-      [`comida${comidaIndex}`]: {
-        alimentos: comida
-      }
-    };
-  } else {
-    data = {
-      [`comida${comidaIndex}`]: {
-        alimentos: [alimentoLimpio]
-      },
-      resumenDiario: null
-    };
+  if (comidaIndex === null || comidaIndex == "" || comidaIndex === undefined) {
+    alert("Error al añadir alimento a comida");
+    return ;
   }
 
-  await setDoc(docRef, data);
+  const alimentoLimpio = {
+    nombre: alimento.nombre || 'Sin nombre',
+    carbos: Math.round(alimento.carbos) ?? 0,
+    protes: Math.round(alimento.protes) ?? 0,
+    grasas: Math.round(alimento.grasas) ?? 0,
+    kcal: Math.round(alimento.kcal) ?? 0,
+    peso: Math.round(alimento.peso) ?? 0
+  };
+
+  const docComidaRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}`);
+  await setDoc(docComidaRef, {}, { merge: true }); // 👈 asegura que exista comida1
+
+  const colRef = collection(docComidaRef, "alimentos");
+  const ref = await addDoc(colRef, alimentoLimpio);
+
+  console.log("✅ Alimento guardado:", colRef.path, "→ ID:", ref.id);
+}
+
+
+
+
+export async function eliminarAlimentoDeComida(id, fecha, nombreComida) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  try {
+    const ref = doc(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}/alimentos/${id}`);
+    await deleteDoc(ref);
+  } catch (error) {
+    console.error("Error al eliminar el alimento:", error);
+    alert("Hubo un error al eliminar el alimento.");
+  }
 }
 
 
