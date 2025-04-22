@@ -1,6 +1,7 @@
 import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, 
   guardarDatosPersonales, obtenerComidas, registrarAlimento, obtenerAlimentos, 
-  eliminarAlimento, actualizarAlimento, registrarAlimentoAComida, eliminarAlimentoDeComida } from '../scripts/dataBaseManager.js';
+  eliminarAlimento, actualizarAlimento, registrarAlimentoAComida, eliminarAlimentoDeComida,
+  actualizarAlimentoDeComida } from '../scripts/dataBaseManager.js';
 
 const Quagga = window.Quagga;
 
@@ -198,6 +199,9 @@ function cambiarVista(vista, callback = null) {
     case "vista-ajustes":
       titulo = "Ajustes";
       break;
+    case "vista-comidas":
+      titulo = "Comidas";
+      break;      
     default:
       titulo = "Principal";
       break;
@@ -322,7 +326,6 @@ async function renderizarTablaMedidas() {
   }
 }
 
-
 async function renderizarComidas() {
   cargando(true);
   const contenedor = document.getElementById("contenedor-comidas");
@@ -371,7 +374,12 @@ async function renderizarComidas() {
       const fila = document.createElement("tr");
       fila.id = `fila-${al.id}`;
       fila.innerHTML = `
-        <td>${al.nombre} (${al.peso}g)${al.marca ? `<br><span class="marca">${al.marca}</span>` : ''}</td>
+        <td>
+          <span class="nombre-alimento" style="cursor:pointer;" onclick='abrirModalSeleccionPeso(${JSON.stringify(al)}, "${nombreComida}", true)'>
+            ${al.nombre} (${al.peso}g)
+          </span>
+          ${al.marca ? `<br><span class="marca">${al.marca}</span>` : ''}
+        </td>
         <td>${(al.carbos || 0).toFixed(1)}</td>
         <td>${(al.protes || 0).toFixed(1)}</td>
         <td>${(al.grasas || 0).toFixed(1)}</td>
@@ -441,19 +449,29 @@ async function renderizarComidas() {
   document.getElementById("carbohidratos-dia").textContent = `${totalDiaCarbos.toFixed(1)} / ${(Number(personales.carbohidratos) || 0).toFixed(1)} g`;
   document.getElementById("proteinas-dia").textContent = `${totalDiaProtes.toFixed(1)} / ${(Number(personales.proteinas) || 0).toFixed(1)} g`;
   document.getElementById("grasas-dia").textContent = `${totalDiaGrasas.toFixed(1)} / ${(Number(personales.grasas) || 0).toFixed(1)} g`;
-  document.getElementById("kcal-dia").textContent = `${totalDiaKcal.toFixed(1)} / ${(Number(personales.kcal) || 0).toFixed(1)} kcal`;
-
-  
+  document.getElementById("kcal-dia").textContent = `${totalDiaKcal.toFixed(1)} / ${(Number(personales.kcalDiarias) || 0).toFixed(1)} kcal`;
 
   // Actualizar barras
   actualizarBarra("barra-carbohidratos", totalDiaCarbos, personales.carbohidratos || 1);
   actualizarBarra("barra-proteinas", totalDiaProtes, personales.proteinas || 1);
   actualizarBarra("barra-grasas", totalDiaGrasas, personales.grasas || 1);
 
-
   cargando(false);
 }
 
+function esAlimentoDuplicado(alimentoApi, listaLocales) {
+  const normalizar = str => (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  return listaLocales.some(local => {
+    return (
+      normalizar(local.nombre) === normalizar(alimentoApi.nombre) &&
+      Math.round(local.carbos * 10) / 10 === Math.round(alimentoApi.carbos * 10) / 10 &&
+      Math.round(local.protes * 10) / 10 === Math.round(alimentoApi.protes * 10) / 10 &&
+      Math.round(local.grasas * 10) / 10 === Math.round(alimentoApi.grasas * 10) / 10 &&
+      Math.round(local.kcal * 10) / 10 === Math.round(alimentoApi.kcal * 10) / 10
+    );
+  });
+}
 
 async function borrarAlimentoDeComida(id, fecha, nombreComida) {
   cargando(true);
@@ -463,6 +481,8 @@ async function borrarAlimentoDeComida(id, fecha, nombreComida) {
 }
 
 window.borrarAlimentoDeComida = borrarAlimentoDeComida;
+window.abrirModalSeleccionPeso = abrirModalSeleccionPeso;
+
 
 async function abrirModalAlimentos(comida) {
   cargando(true);
@@ -477,7 +497,6 @@ async function abrirModalAlimentos(comida) {
 
   document.getElementById("btn-manual").onclick = () => {
     cargando(false);
-    console.log("Añadienod alimento : " +comida)
     añadirAlimento(null, comida);
   };
 
@@ -517,21 +536,68 @@ async function abrirModalAlimentos(comida) {
 
   buscador.addEventListener("input", debounce(async () => {
     const texto = buscador.value.trim();
-    const resultados = await obtenerAlimentos(texto);
+    cargando(true); // ⬅️ iniciar carga al buscar
 
     tbody.innerHTML = "";
-    resultados.sort((a, b) => a.nombre.localeCompare(b.nombre));
-    resultados.forEach(alimento => {
-      const fila = crearFilaAlimento(alimento, comida);
+
+    // Mostrar solo locales si está vacío
+    if (!texto) {
+      const alimentos = await obtenerAlimentos();
+      alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      alimentos.forEach(alimento => {
+        const fila = crearFilaAlimento(alimento, comida, false);
+        tbody.appendChild(fila);
+      });
+      cargando(false); // ⬅️ finaliza carga al terminar locales
+      return;
+    }
+
+    // Buscar en base de datos
+    const resultadosLocal = await obtenerAlimentos(texto);
+    resultadosLocal.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    resultadosLocal.forEach(alimento => {
+      const fila = crearFilaAlimento(alimento, comida, false);
       tbody.appendChild(fila);
     });
+
+    // Buscar en API externa
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(texto)}&search_simple=1&action=process&json=1&page_size=10`);
+      const data = await res.json();
+
+      if (data.products) {
+        data.products.forEach(p => {
+          const n = p.nutriments || {};
+          const alimentoExterno = {
+            nombre: p.product_name || "Sin nombre",
+            marca: p.brands || "Sin marca",
+            carbos: n.carbohydrates_100g || 0,
+            protes: n.proteins_100g || 0,
+            grasas: n.fat_100g || 0,
+            kcal: n["energy-kcal_100g"] || 0,
+            externo: true
+          };
+        
+          if (!esAlimentoDuplicado(alimentoExterno, resultadosLocal)) {
+            const fila = crearFilaAlimento(alimentoExterno, comida, true);
+            fila.style.backgroundColor = "#f0f0f0";
+            tbody.appendChild(fila);
+          }
+        });
+        
+      }
+    } catch (e) {
+      console.error("Error al consultar API externa", e);
+    }
+
+    cargando(false); // ⬅️ finaliza carga después de locales + externos
   }, 300));
 
+  // Carga inicial (alimentos locales)
   const alimentos = await obtenerAlimentos();
   alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
-
   alimentos.forEach(alimento => {
-    const fila = crearFilaAlimento(alimento, comida);
+    const fila = crearFilaAlimento(alimento, comida, false);
     tbody.appendChild(fila);
   });
 
@@ -553,7 +619,6 @@ async function añadirAlimentoAComida(alimento, comida) {
 
   renderizarComidas();
 }
-
 
 function debounce(func, delay) {
   let timeout;
@@ -591,7 +656,7 @@ function crearFilaAlimento(alimento, comida) {
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
       <path d="M8 1a.5.5 0 0 1 .5.5V7h5.5a.5.5 0 0 1 0 1H8.5v5.5a.5.5 0 0 1-1 0V8H2a.5.5 0 0 1 0-1h5.5V1.5A.5.5 0 0 1 8 1z"/>
     </svg>`;
-    btnAñadir.onclick = () => abrirModalSeleccionPeso(alimento, comida);
+    btnAñadir.onclick = () => abrirModalSeleccionPeso(alimento, comida, false);
 
   const btnEditar = document.createElement("button");
   btnEditar.className = "icono-btn";
@@ -599,7 +664,7 @@ function crearFilaAlimento(alimento, comida) {
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
       <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-9.5 9.5a.5.5 0 0 1-.168.11l-4 1.5a.5.5 0 0 1-.65-.65l1.5-4a.5.5 0 0 1 .11-.168l9.5-9.5zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zM10.5 3.207 2 11.707V13h1.293l8.5-8.5-1.293-1.293z"/>
     </svg>`;
-  btnEditar.onclick = () => editarValoresAlimento(alimento.id);
+  btnEditar.onclick = () => editarValoresAlimento(alimento.id, comida);
 
   const btnBorrar = document.createElement("button");
   btnBorrar.className = "icono-btn";
@@ -608,11 +673,14 @@ function crearFilaAlimento(alimento, comida) {
       <path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm5 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
       <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H5V1.5A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5V2h2.5a1 1 0 0 1 1 1zM6 1.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V2H6v-.5zM4 4v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4H4z"/>
     </svg>`;
-  btnBorrar.onclick = () => borrarAlimento(alimento.id);
+  btnBorrar.onclick = () => borrarAlimento(alimento.id, comida);
 
   contenedorAccion.appendChild(btnAñadir);
-  contenedorAccion.appendChild(btnEditar);
-  contenedorAccion.appendChild(btnBorrar);
+
+  if (!alimento.externo) {
+    contenedorAccion.appendChild(btnEditar);
+    contenedorAccion.appendChild(btnBorrar);
+  }
   tdAccion.appendChild(contenedorAccion);
 
   fila.appendChild(tdNombre);
@@ -622,7 +690,7 @@ function crearFilaAlimento(alimento, comida) {
   return fila;
 }
 
-function abrirModalSeleccionPeso(alimento, comida) {
+function abrirModalSeleccionPeso(alimento, comida, modificacion) {
   const modalPrevio = document.getElementById("modal-seleccion-peso");
   if (modalPrevio) modalPrevio.remove();
 
@@ -632,7 +700,7 @@ function abrirModalSeleccionPeso(alimento, comida) {
   modal.innerHTML = `
     <div class="modal-contenido">
       <h2>Selecciona el peso (g)</h2>
-      <input type="number" id="input-peso" value="100" placeholder="Ej: 100" class="input" min="1" />
+      <input type="number" id="input-peso" value="` + (modificacion ? alimento.peso : 100)+ `" placeholder="Ej: 100" class="input" min="1" />
       <div id="resumen-nutricional" class="resumen-nutricional"></div>
       <div class="botones-modal">
         <button id="btn-cancelar-peso" class="btn btn-secundario">Cancelar</button>
@@ -672,9 +740,9 @@ function abrirModalSeleccionPeso(alimento, comida) {
 
   actualizarResumen(); // Llamada inicial al cargar el modal
 
-  document.getElementById("btn-confirmar-peso").onclick = () => {
+  document.getElementById("btn-confirmar-peso").onclick = async () => {
     cargando(true);
-
+  
     const peso = parseInt(inputPeso.value);
     if (isNaN(peso) || peso <= 0) return alert("Introduce un peso válido.");
   
@@ -682,15 +750,29 @@ function abrirModalSeleccionPeso(alimento, comida) {
   
     const factor = peso / 100;
   
+    const alimentoOriginal = { ...alimento }; // copia antes de modificar
+  
     alimento.peso = peso;
     alimento.carbos = Math.round((alimento.carbos * factor) * 10) / 10;
     alimento.protes = Math.round((alimento.protes * factor) * 10) / 10;
     alimento.grasas = Math.round((alimento.grasas * factor) * 10) / 10;
     alimento.kcal   = Math.round((alimento.kcal * factor) * 10) / 10;
   
-    añadirAlimentoAComida(alimento, comida);
+    if (modificacion) {
+      actualizarAlimentoDeComida(alimento, comida);
+      renderizarComidas();
+    } else {
+      añadirAlimentoAComida(alimento, comida);
+  
+      if (alimento.externo) {
+        console.log("Es externo: ", alimentoOriginal);
+        await registrarAlimento(alimentoOriginal);
+      }
+    }
+  
     modal.remove();
   };
+  
 
   document.getElementById("btn-cancelar-peso").onclick = () => {
     modal.remove();
@@ -730,6 +812,7 @@ export async function escanearAlimento(comida) {
     if (err) {
       alert(err);
       container.classList.add("oculto");
+      cargando(false);
       return;
     }
     Quagga.start();
@@ -776,7 +859,7 @@ export async function escanearAlimento(comida) {
         protes,
         grasas,
         kcal
-      });
+      }, comida);
 
       abrirModalAlimentos(comida);
     } else {
@@ -791,7 +874,6 @@ export async function escanearAlimento(comida) {
     abrirModalAlimentos(comida);
   };
 }
-
 
 async function añadirAlimento(datos, comida) {
   cargando(true);
@@ -817,19 +899,19 @@ async function añadirAlimento(datos, comida) {
       </div>
       <div class="grupo-campo">
         <label for="edit-carbos">Carbohidratos</label>
-        <input id="edit-carbos" type="number" value="${datos?.carbos ?? ''}">
+        <input id="edit-carbos" type="number" value="${datos?.carbos.toFixed(1) ?? ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-protes">Proteínas</label>
-        <input id="edit-protes" type="number" value="${datos?.protes ?? ''}">
+        <input id="edit-protes" type="number" value="${datos?.protes.toFixed(1) ?? ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-grasas">Grasas</label>
-        <input id="edit-grasas" type="number" value="${datos?.grasas ?? ''}">
+        <input id="edit-grasas" type="number" value="${datos?.grasas.toFixed(1) ?? ''}">
       </div>
       <div class="grupo-campo">
         <label for="edit-kcal">Kcal</label>
-        <input id="edit-kcal" type="number" value="${datos?.kcal ?? ''}">
+        <input id="edit-kcal" type="number" value="${datos?.kcal.toFixed(1) ?? ''}">
       </div>
 
       <div class="separador-bloque"></div>
@@ -872,7 +954,7 @@ async function añadirAlimento(datos, comida) {
 
 
 
-async function editarValoresAlimento(id) {
+async function editarValoresAlimento(id, comida) {
   cargando(true);
 
   const datos = (await obtenerAlimentos(id))[0];
@@ -949,18 +1031,16 @@ async function editarValoresAlimento(id) {
 
     cargando(false);
 
-    abrirModalAlimentos(); // recarga la tabla
+    abrirModalAlimentos(comida); // recarga la tabla
   };
 }
 
 
-function borrarAlimento(id) {
+function borrarAlimento(id, comida) {
   eliminarAlimento(id);
 
-  abrirModalAlimentos();
+  abrirModalAlimentos(comida);
 }
-
-function abrirFormularioManual() {}
 
 function calcularRecomendacionNutricionalAutomatica() {
   console.log(camposDatosPersonales.recomendacionNutricionalAutomatica.checked)

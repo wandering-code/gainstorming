@@ -457,20 +457,17 @@ export async function registrarAlimento(datos) {
     return;
   }
 
-  const loader = document.getElementById('loader');
-  loader.classList.remove('oculto');
-
   try {
 
     const alimentosRef = collection(db, `usuarios/${user.uid}/alimentos`);
     const docRef = await addDoc(alimentosRef, {
         nombre: datos.nombre,
         marca: datos.marca,
-        codigo: datos.codigo,
-        carbos: Math.round(datos.carbos),
-        protes: Math.round(datos.protes),
-        grasas: Math.round(datos.grasas),
-        kcal: Math.round(datos.kcal)
+        codigo: datos.codigo || null,
+        carbos: Math.round((datos.carbos || 0) * 10) / 10,
+        protes: Math.round((datos.protes || 0) * 10) / 10,
+        grasas: Math.round((datos.grasas || 0) * 10) / 10,
+        kcal: Math.round((datos.kcal || 0) * 10) / 10,
     });
 
     console.log("Alimento: ", datos);
@@ -479,8 +476,6 @@ export async function registrarAlimento(datos) {
 
   } catch (error) {
     console.error("Error al guardar alimento:", error);
-  } finally {
-    loader.classList.add('oculto');
   }
 }
 
@@ -596,11 +591,11 @@ export async function registrarAlimentoAComida(alimento, comidaIndex) {
 
   const alimentoLimpio = {
     nombre: alimento.nombre || 'Sin nombre',
-    carbos: Math.round(alimento.carbos) ?? 0,
-    protes: Math.round(alimento.protes) ?? 0,
-    grasas: Math.round(alimento.grasas) ?? 0,
-    kcal: Math.round(alimento.kcal) ?? 0,
-    peso: Math.round(alimento.peso) ?? 0
+    carbos: Math.round((alimento.carbos || 0) * 10) / 10,
+    protes: Math.round((alimento.protes || 0) * 10) / 10,
+    grasas: Math.round((alimento.grasas || 0) * 10) / 10,
+    kcal: Math.round((alimento.kcal || 0) * 10) / 10,
+    peso: Math.round((alimento.peso || 0) * 10) / 10
   };
 
   const docComidaRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}`);
@@ -612,7 +607,29 @@ export async function registrarAlimentoAComida(alimento, comidaIndex) {
   console.log("✅ Alimento guardado:", colRef.path, "→ ID:", ref.id);
 }
 
+export async function actualizarAlimentoDeComida(alimento, nombreComida) {
+  const user = auth.currentUser;
+  if (!user) return;
 
+  const fecha = document.getElementById("selector-calendario").value;
+
+  if (!alimento?.id || !nombreComida) {
+    alert("Error al actualizar alimento");
+    return;
+  }
+
+  const docRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}/alimentos/${alimento.id}`);
+
+  const alimentoActualizado = {
+    peso: Math.round(alimento.peso * 10) / 10 || 0,
+    carbos: Math.round(alimento.carbos * 10) / 10 || 0,
+    protes: Math.round(alimento.protes * 10) / 10 || 0,
+    grasas: Math.round(alimento.grasas * 10) / 10 || 0,
+    kcal: Math.round(alimento.kcal * 10) / 10 || 0,
+  };
+
+  await updateDoc(docRef, alimentoActualizado);
+}
 
 
 export async function eliminarAlimentoDeComida(id, fecha, nombreComida) {
