@@ -718,12 +718,20 @@ function abrirModalSeleccionPeso(alimento, comida, modificacion) {
   const actualizarResumen = () => {
     let peso = parseFloat(inputPeso.value);
     if (isNaN(peso) || peso <= 0) peso = 100;
+    
+    const alimentoBase = {
+      ...alimento,
+      carbos: alimento.carbos * (100 / (alimento.peso ? alimento.peso : 100) ),
+      protes: alimento.protes * (100 / (alimento.peso ? alimento.peso : 100)),
+      grasas: alimento.grasas * (100 / (alimento.peso ? alimento.peso : 100)),
+      kcal: alimento.kcal * (100 / (alimento.peso ? alimento.peso : 100))
+    };
   
     const mult = peso / 100;
-    const c = (alimento.carbos * mult).toFixed(1);
-    const p = (alimento.protes * mult).toFixed(1);
-    const g = (alimento.grasas * mult).toFixed(1);
-    const kcal = Math.round(alimento.kcal * mult);
+    const c = (alimentoBase.carbos * mult).toFixed(1);
+    const p = (alimentoBase.protes * mult).toFixed(1);
+    const g = (alimentoBase.grasas * mult).toFixed(1);
+    const kcal = (alimentoBase.kcal * mult).toFixed(1);
   
     resumen.innerHTML = `
       <div class="fila-resumen">
@@ -751,12 +759,20 @@ function abrirModalSeleccionPeso(alimento, comida, modificacion) {
     const factor = peso / 100;
   
     const alimentoOriginal = { ...alimento }; // copia antes de modificar
-  
+    const alimentoBase = {
+      ...alimento,
+      carbos: alimento.carbos * (100 / (alimento.peso ? alimento.peso : 100)),
+      protes: alimento.protes * (100 / (alimento.peso ? alimento.peso : 100)),
+      grasas: alimento.grasas * (100 / (alimento.peso ? alimento.peso : 100)),
+      kcal: alimento.kcal * (100 / (alimento.peso ? alimento.peso : 100))
+    };
+
+    
     alimento.peso = peso;
-    alimento.carbos = Math.round((alimento.carbos * factor) * 10) / 10;
-    alimento.protes = Math.round((alimento.protes * factor) * 10) / 10;
-    alimento.grasas = Math.round((alimento.grasas * factor) * 10) / 10;
-    alimento.kcal   = Math.round((alimento.kcal * factor) * 10) / 10;
+    alimento.carbos = Math.round((alimentoBase.carbos * factor) * 10) / 10;
+    alimento.protes = Math.round((alimentoBase.protes * factor) * 10) / 10;
+    alimento.grasas = Math.round((alimentoBase.grasas * factor) * 10) / 10;
+    alimento.kcal   = Math.round((alimentoBase.kcal * factor) * 10) / 10;
   
     if (modificacion) {
       actualizarAlimentoDeComida(alimento, comida);

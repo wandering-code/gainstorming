@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="styles/pc.css">
     <link rel="stylesheet" href="styles/phone.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Gainstorming">
+    <link rel="apple-touch-icon" href="images/logos/logo.png">
 </head>
 <body>
   <div id="contenedor-index">
@@ -55,5 +61,13 @@
   </script>
     
   <script type="module" src="scripts/main.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log("SW registrado"))
+        .catch(err => console.error("Error al registrar el SW", err));
+    }
+  </script>
 </body>
 </html>

@@ -1351,7 +1351,9 @@ select.input-error {
     color: #010052;
   }
 
-
+  #input-peso {
+    font-size: 1rem;
+  }
 
 
 
