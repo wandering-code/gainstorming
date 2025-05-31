@@ -11,7 +11,7 @@
 <body>
     <div id="container-principal">
         <header class="barra-superior">
-            <span class="nombre-app">GAINSTORMING</span>
+            <span class="nombre-app">ONLYGAiNS</span>
             <span class="nombre-seccion" id="nombre-seccion">Principal</span>
         </header>
 
@@ -59,32 +59,41 @@
             </div>
             
             <div id="resumen-macros" class="resumen-macros">
-                <div class="grupo-macro">
-                  <span class="macro-label">Carbohidratos</span>
-                  <div class="macro-barra">
-                    <div class="macro-fill" id="barra-carbohidratos"></div>
+                <div class="grupo-macros-compacto">
+                  <div class="macro-item">
+                    <span class="macro-label">Carbohidratos</span>
+                    <div class="macro-barra">
+                      <div class="macro-fill" id="barra-carbohidratos"></div>
+                    </div>
+                    <span class="macro-dato" id="carbohidratos-dia">0.0 / 0.0 g</span>
                   </div>
-                  <span class="macro-dato" id="carbohidratos-dia">0 / 0 g</span>
-                </div>
-                <div class="grupo-macro">
-                  <span class="macro-label">Proteínas</span>
-                  <div class="macro-barra">
-                    <div class="macro-fill" id="barra-proteinas"></div>
+                  <div class="macro-item">
+                    <span class="macro-label">Proteínas</span>
+                    <div class="macro-barra">
+                      <div class="macro-fill" id="barra-proteinas"></div>
+                    </div>
+                    <span class="macro-dato" id="proteinas-dia">0.0 / 0.0 g</span>
                   </div>
-                  <span class="macro-dato" id="proteinas-dia">0 / 0 g</span>
-                </div>
-                <div class="grupo-macro">
-                  <span class="macro-label">Grasas</span>
-                  <div class="macro-barra">
-                    <div class="macro-fill" id="barra-grasas"></div>
+                  <div class="macro-item">
+                    <span class="macro-label">Grasas</span>
+                    <div class="macro-barra">
+                      <div class="macro-fill" id="barra-grasas"></div>
+                    </div>
+                    <span class="macro-dato" id="grasas-dia">0.0 / 0.0 g</span>
                   </div>
-                  <span class="macro-dato" id="grasas-dia">0 / 0 g</span>
                 </div>
+              
                 <div class="grupo-kcal">
                   <span class="kcal-label">Kcal totales</span>
-                  <span class="kcal-dato" id="kcal-dia">0 / 0 kcal</span>
+                  <div class="macro-barra">
+                    <div class="macro-fill" id="barra-kcal"></div>
+                  </div>
+                  <span class="kcal-dato" id="kcal-dia">0.0 / 0.0 kcal</span>
                 </div>
-            </div>
+              </div>
+              
+              
+              
               
             <div id="contenedor-comidas"></div>
         </div>

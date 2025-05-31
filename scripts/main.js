@@ -455,6 +455,7 @@ async function renderizarComidas() {
   actualizarBarra("barra-carbohidratos", totalDiaCarbos, personales.carbohidratos || 1);
   actualizarBarra("barra-proteinas", totalDiaProtes, personales.proteinas || 1);
   actualizarBarra("barra-grasas", totalDiaGrasas, personales.grasas || 1);
+  actualizarBarra("barra-kcal", totalDiaKcal, personales.kcalDiarias || 1);
 
   cargando(false);
 }
@@ -509,11 +510,31 @@ async function abrirModalAlimentos(comida) {
   contenedor.innerHTML = "";
   contenedor.classList.remove("oculto");
 
+  const searchContainer = document.createElement("div");
+  searchContainer.className = "buscador-contenedor";
+  contenedor.appendChild(searchContainer);
+
   const buscador = document.createElement("input");
   buscador.type = "text";
   buscador.placeholder = "Buscar por nombre o marca";
   buscador.className = "buscador-alimentos";
-  contenedor.appendChild(buscador);
+  searchContainer.appendChild(buscador);
+
+  // 🔥 Slider para activar/desactivar búsqueda en API
+  const apiToggleContainer = document.createElement("div");
+  apiToggleContainer.classList.add("api-toggle");
+
+  const apiToggleLabel = document.createElement("label");
+  apiToggleLabel.setAttribute("for", "apiToggle");
+  apiToggleLabel.textContent = "API";
+
+  const apiToggle = document.createElement("input");
+  apiToggle.type = "checkbox";
+  apiToggle.id = "apiToggle";
+
+  apiToggleContainer.appendChild(apiToggleLabel);
+  apiToggleContainer.appendChild(apiToggle);
+  searchContainer.appendChild(apiToggleContainer);
 
   const tabla = document.createElement("table");
   tabla.className = "tabla-alimentos-modal";
@@ -536,64 +557,94 @@ async function abrirModalAlimentos(comida) {
 
   buscador.addEventListener("input", debounce(async () => {
     const texto = buscador.value.trim();
-    cargando(true); // ⬅️ iniciar carga al buscar
-
+    const buscarEnApi = apiToggle.checked;
+    cargando(true);
+    
+    console.time("Tiempo total búsqueda");
+    console.log("[DEBUG] Texto de búsqueda:", texto);
+    console.log("[DEBUG] Búsqueda en API activada:", buscarEnApi);
+  
     tbody.innerHTML = "";
-
-    // Mostrar solo locales si está vacío
+  
     if (!texto) {
+      console.log("[DEBUG] Texto vacío, cargando solo alimentos locales");
       const alimentos = await obtenerAlimentos();
+      console.log("[DEBUG] Alimentos locales cargados:", alimentos.length);
       alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
       alimentos.forEach(alimento => {
         const fila = crearFilaAlimento(alimento, comida, false);
         tbody.appendChild(fila);
       });
-      cargando(false); // ⬅️ finaliza carga al terminar locales
+      cargando(false);
+      console.timeEnd("Tiempo total búsqueda");
       return;
     }
-
-    // Buscar en base de datos
+  
+    console.time("Tiempo búsqueda Firebase");
     const resultadosLocal = await obtenerAlimentos(texto);
+    console.log("[DEBUG] Resultados locales encontrados:", resultadosLocal.length);
+    console.timeEnd("Tiempo búsqueda Firebase");
+  
     resultadosLocal.sort((a, b) => a.nombre.localeCompare(b.nombre));
     resultadosLocal.forEach(alimento => {
       const fila = crearFilaAlimento(alimento, comida, false);
       tbody.appendChild(fila);
     });
-
-    // Buscar en API externa
-    try {
-      const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(texto)}&search_simple=1&action=process&json=1&page_size=10`);
-      const data = await res.json();
-
-      if (data.products) {
-        data.products.forEach(p => {
-          const n = p.nutriments || {};
-          const alimentoExterno = {
-            nombre: p.product_name || "Sin nombre",
-            marca: p.brands || "Sin marca",
-            carbos: n.carbohydrates_100g || 0,
-            protes: n.proteins_100g || 0,
-            grasas: n.fat_100g || 0,
-            kcal: n["energy-kcal_100g"] || 0,
-            externo: true
-          };
-        
-          if (!esAlimentoDuplicado(alimentoExterno, resultadosLocal)) {
-            const fila = crearFilaAlimento(alimentoExterno, comida, true);
-            fila.style.backgroundColor = "#f0f0f0";
-            tbody.appendChild(fila);
+  
+    if (buscarEnApi) {
+      console.time("Tiempo búsqueda API externa");
+      try {
+        const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(texto)}&search_simple=1&action=process&json=1&page_size=10`;
+        console.log("[DEBUG] URL de búsqueda API:", url);
+  
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000); // 5 segundos
+  
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          console.log("[DEBUG] Estado respuesta API:", res.status);
+  
+          const data = await res.json();
+          console.log("[DEBUG] Número de productos recibidos:", data.products ? data.products.length : 0);
+  
+          if (data.products) {
+            data.products.forEach(p => {
+              const n = p.nutriments || {};
+              const alimentoExterno = {
+                nombre: p.product_name || "Sin nombre",
+                marca: p.brands || "Sin marca",
+                carbos: n.carbohydrates_100g || 0,
+                protes: n.proteins_100g || 0,
+                grasas: n.fat_100g || 0,
+                kcal: n["energy-kcal_100g"] || 0,
+                externo: true
+              };
+  
+              if (!esAlimentoDuplicado(alimentoExterno, resultadosLocal)) {
+                const fila = crearFilaAlimento(alimentoExterno, comida, true);
+                fila.style.backgroundColor = "#f0f0f0";
+                tbody.appendChild(fila);
+              }
+            });
           }
-        });
-        
+        } catch (e) {
+          if (e.name === "AbortError") {
+            console.warn("[DEBUG] Timeout: La API tardó demasiado, abortada");
+          } else {
+            console.error("[DEBUG] Error al consultar API externa", e);
+          }
+        }
+      } catch (e) {
+        console.error("[DEBUG] Error al configurar fetch de API externa", e);
       }
-    } catch (e) {
-      console.error("Error al consultar API externa", e);
+      console.timeEnd("Tiempo búsqueda API externa");
     }
-
-    cargando(false); // ⬅️ finaliza carga después de locales + externos
-  }, 300));
-
-  // Carga inicial (alimentos locales)
+  
+    cargando(false);
+    console.timeEnd("Tiempo total búsqueda");
+  }, 300));  
+  
   const alimentos = await obtenerAlimentos();
   alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
   alimentos.forEach(alimento => {
@@ -603,6 +654,7 @@ async function abrirModalAlimentos(comida) {
 
   cargando(false);
 }
+
 
 
 async function añadirAlimentoAComida(alimento, comida) {
