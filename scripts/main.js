@@ -8,6 +8,8 @@ const Quagga = window.Quagga;
 var camposDatosPersonales = {}
 var validacionActiva = false;
 
+let ultimaComidaEditada = null;
+
 window.addEventListener("DOMContentLoaded", function () {
   // cargarVistaAjustes();
   // cargarVista(localStorage.getItem("ultima-vista") || "");
@@ -445,6 +447,16 @@ async function renderizarComidas() {
     bloque.appendChild(hr);
 
     contenedor.appendChild(bloque);
+
+    requestAnimationFrame(() => {
+      if (ultimaComidaEditada !== null && Number.isInteger(ultimaComidaEditada) && ultimaComidaEditada > 0) {
+        const bloque = document.querySelector(`.bloque-comida:nth-child(${ultimaComidaEditada})`);
+        if (bloque) {
+          bloque.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+      ultimaComidaEditada = null;
+    });
   }
 
   // Totales globales del día
@@ -1179,8 +1191,6 @@ async function copiarComida(nombreComida) {
   }
 
   comidaCopiada = datos.comidas[nombreComida];
-  console.log("✅ Comida copiada:", comidaCopiada);
-  alert("Comida copiada");
   document.querySelector(".menu-opciones")?.remove();
 }
 
@@ -1190,11 +1200,14 @@ async function pegarComida(destinoIndex) {
     return;
   }
 
+  ultimaComidaEditada = parseInt(destinoIndex, 10);
+
+  cargando(true);
   for (let alimento of comidaCopiada) {
     await registrarAlimentoAComida(alimento, destinoIndex);
   }
+  cargando(false);
 
-  alert("Comida pegada");
   document.querySelector(".menu-opciones")?.remove();
   renderizarComidas(); // Recargar la vista
 }
