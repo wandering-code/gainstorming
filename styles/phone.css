@@ -28,8 +28,8 @@
     flex-direction: column;
     min-height: 100vh;
     font-family: 'Urbanist', sans-serif;
-    background-color: white;
-    color: #111;
+    background-color: #01aae9;
+    color: #01aae9;
   }
 
   #container-principal {
@@ -146,7 +146,7 @@
     padding: 0.8rem;
     border: none;
     border-radius: 8px;
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     font-size: 1rem;
     cursor: pointer;
@@ -183,7 +183,7 @@
     left: 0;
     right: 0;
     height: 60px;
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     display: flex;
     align-items: center;
@@ -231,7 +231,7 @@
     font-size: 28px;
     text-align: center;
     border-radius: 50%;
-    background-color: #333;
+    background-color: #01aae9;
     color: white;
     border: none;
     cursor: pointer;
@@ -316,7 +316,7 @@
     padding: 0.8rem;
     border: none;
     border-radius: 8px;
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     font-size: 1rem;
     cursor: pointer;
@@ -409,7 +409,7 @@
 }
 
 .switch-ajuste input:checked + .slider {
-  background-color: #222;
+  background-color: #01aae9;
 }
 
 .switch-ajuste input:checked + .slider::before {
@@ -437,7 +437,7 @@
 
 input.input-error,
 select.input-error {
-  border: 2px solid #222 !important;
+  border: 2px solid #01aae9 !important;
   background-color: #fff !important;
 }
 
@@ -483,7 +483,7 @@ select.input-error {
     padding: 0.8rem;
     border: none;
     border-radius: 8px;
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     cursor: pointer;
     width: 100%;
@@ -547,7 +547,7 @@ select.input-error {
     font-size: 1rem;
     border: none;
     border-radius: 8px;
-    background-color: #0066ff;
+    background-color: #01aae9;
     color: white;
     cursor: pointer;
   }
@@ -778,7 +778,7 @@ select.input-error {
   
   .macro-fill {
     height: 100%;
-    background-color: #222;
+    background-color: #01aae9;
     width: 0%;
     transition: width 0.3s ease;
   }
@@ -856,42 +856,56 @@ select.input-error {
     color: #333;
   }
   
-  .tabla-alimentos {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-  }
-  
-  .tabla-alimentos th,
-  .tabla-alimentos td {
-    border: 1px solid #e0e0e0;
-    padding: 0.5rem;
-    text-align: center;
-  }
+ .tabla-alimentos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  border-radius: 0.4rem;
+  overflow-x: auto; /* Scroll horizontal solo si es necesario */
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.08);
+  margin-bottom: 0.5rem;
+  table-layout: fixed; /* Fuerza ancho fijo en columnas */
+}
 
-  .tabla-alimentos td:first-child,
-  .tabla-alimentos th:first-child {
-    text-align: left;
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+.tabla-alimentos th,
+.tabla-alimentos td {
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0.5rem;
+  text-align: center;
+  word-wrap: break-word; /* Permite cortar palabras si es necesario */
+}
 
-  .tabla-alimentos th:nth-child(n+2),
-  .tabla-alimentos td:nth-child(n+2) {
-    width: 50px;
-  }
-  
-  .tabla-alimentos th {
-    background-color: #f7f7f7;
-    font-weight: 600;
-    color: #555;
-  }
+.tabla-alimentos th {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  color: #444;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.tabla-alimentos td:first-child,
+.tabla-alimentos th:first-child {
+  text-align: left;
+  max-width: 300px;
+  overflow-wrap: break-word; /* O usa word-break: break-word; si prefieres */
+  word-break: break-word;    /* Esto fuerza el salto de línea */
+}
+
+
+.tabla-alimentos th:nth-child(n+2),
+.tabla-alimentos td:nth-child(n+2) {
+  width: 50px;
+  max-width: 50px;
+}
+
+.tabla-alimentos tbody tr:hover {
+  background-color: #f0f8ff;
+}
+
   
   .boton-anadir {
     display: inline-block;
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     border: none;
     padding: 0.4rem 0.8rem;
@@ -959,7 +973,7 @@ select.input-error {
     font-size: 1rem;
     border-radius: 6px;
     border: none;
-    background-color: #333;
+    background-color: #01aae9;
     color: white;
     cursor: pointer;
   }
@@ -986,7 +1000,7 @@ select.input-error {
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
   }
 
@@ -1056,43 +1070,79 @@ select.input-error {
     border: 1px solid #ccc;
   }
   
-  /* Estructura principal */
-  .tabla-alimentos-modal {
-    width: 100%;
-    border: 1px solid #ccc;
-    border-collapse: collapse;
-  }
-  
-  /* Alineación sincronizada */
-  .tabla-alimentos-modal thead {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
-  }
-  
-  .tabla-alimentos-modal tbody {
-    display: block;
-    max-height: 300px;
-    overflow-y: auto;
-    width: 100%;
-  }
-  
-  .tabla-alimentos-modal tbody tr {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
-  }
-  
-  /* Celdas generales */
-  .tabla-alimentos-modal th,
-  .tabla-alimentos-modal td {
-    border: 1px solid #ccc;
-    padding: 0.5rem;
-    vertical-align: middle;
-    text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+/* Estructura principal */
+.tabla-alimentos-modal {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  border-radius: 0.4rem;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.08);
+  margin-bottom: 0.5rem;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+/* Alineación sincronizada */
+.tabla-alimentos-modal thead {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.tabla-alimentos-modal tbody {
+  display: block;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.tabla-alimentos-modal tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* Celdas generales */
+.tabla-alimentos-modal th,
+.tabla-alimentos-modal td {
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0.5rem;
+  vertical-align: middle;
+  text-align: center;
+  background-color: white;
+  color: #444;
+  font-size: 0.85rem;
+}
+
+.tabla-alimentos-modal th {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+/* Primera columna: salto de línea, máximo ancho */
+.tabla-alimentos-modal td:first-child,
+.tabla-alimentos-modal th:first-child {
+  text-align: left;
+  max-width: 300px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Columnas de macros: ancho fijo */
+.tabla-alimentos-modal th:nth-child(n+2),
+.tabla-alimentos-modal td:nth-child(n+2) {
+  width: 60px;
+  max-width: 60px;
+}
+
+/* Hover efecto suave */
+.tabla-alimentos-modal tbody tr:hover {
+  background-color: #f0f8ff;
+}
+
+
   
   /* Columnas específicas */
   .celda-nombre,
@@ -1158,7 +1208,7 @@ select.input-error {
   
   /* Iconos */
   .icono-btn {
-    background-color: #222;
+    background-color: #01aae9;
     border-radius: 0.5rem;
     font-size: 0.7rem;
     color: white;
@@ -1224,6 +1274,7 @@ select.input-error {
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   z-index: 999;
   width: 150px;
+  
 }
 
 .menu-opciones button {
@@ -1234,6 +1285,7 @@ select.input-error {
   background: none;
   text-align: left;
   cursor: pointer;
+  color: #222;
 }
 
 .menu-opciones button:hover {
@@ -1248,7 +1300,11 @@ select.input-error {
   line-height: 1;
 }
   
-  
+#input-sexo option {
+  max-width: 150px;
+  overflow-y: auto;
+}
+
   
   
   
@@ -1311,7 +1367,7 @@ select.input-error {
   
   
   .modal-confirmar {
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     padding: 0.7rem;
     font-size: 1rem;
@@ -1321,7 +1377,7 @@ select.input-error {
   }
   
   .modal-cerrar {
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     padding: 0.7rem;
     font-size: 1rem;
@@ -1391,7 +1447,7 @@ select.input-error {
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    background-color: #222;
+    background-color: #01aae9;
     color: white;
     margin-top: 2rem;
   }

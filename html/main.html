@@ -6,6 +6,7 @@
     <title>ONLYGAiNS</title>
     <link rel="stylesheet" href="../styles/pc.css">
     <link rel="stylesheet" href="../styles/phone.css">
+    <link rel="icon" href="../images/logos/onlygains-logo.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -115,8 +116,16 @@
                     <label for="input-email">Email</label>
                     <input type="text" id="input-email" placeholder="Email" class="disabled" disabled>
 
-                    <label for="input-edad">Edad</label>
-                    <input type="number" id="input-edad" placeholder="Edad" min="1" max="100">
+                    <label for="input-fecha-nacimiento">Fecha de nacimiento</label>
+                    <input type="date" id="input-fecha-nacimiento" placeholder="Fecha de nacimiento">
+
+                    <label for="input-sexo">Sexo</label>
+                    <select id="input-sexo">
+                      <option value="">Seleccionar</option>
+                      <option value="hombre">Hombre</option>
+                      <option value="mujer">Mujer</option>
+                    </select>
+
                 
                     <label for="input-peso">Peso (kg)</label>
                     <input type="number" id="input-peso" placeholder="Peso (kg)" min="1" max="200">

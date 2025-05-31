@@ -1,7 +1,7 @@
 import { guardarMedida, obtenerMedidas, eliminarMedida, obtenerDatosPersonales, 
   guardarDatosPersonales, obtenerComidas, registrarAlimento, obtenerAlimentos, 
   eliminarAlimento, actualizarAlimento, registrarAlimentoAComida, eliminarAlimentoDeComida,
-  actualizarAlimentoDeComida } from '../scripts/dataBaseManager.js';
+  actualizarAlimentoDeComida, obtenerMacrosAlmacenados } from '../scripts/dataBaseManager.js';
 
 const Quagga = window.Quagga;
 
@@ -16,8 +16,9 @@ window.addEventListener("DOMContentLoaded", function () {
 
   camposDatosPersonales = {
     nombreUsuario: document.getElementById("input-nombre-usuario"),
-    email: this.document.getElementById("input-email"),
-    edad: document.getElementById("input-edad"),
+    email: document.getElementById("input-email"),
+    fechaNacimiento: document.getElementById("input-fecha-nacimiento"),
+    sexo: document.getElementById("input-sexo"),
     peso: document.getElementById("input-peso"),
     altura: document.getElementById("input-altura"),
     nivelActividad: document.getElementById("select-nivel-actividad"),
@@ -48,24 +49,25 @@ window.addEventListener("DOMContentLoaded", function () {
   });
 
   const camposParaRecalculo = [
-    camposDatosPersonales.edad ? camposDatosPersonales.edad.id : "",
-    camposDatosPersonales.peso ? camposDatosPersonales.peso.id : "",
-    camposDatosPersonales.altura ? camposDatosPersonales.altura.id : "",
-    camposDatosPersonales.nivelActividad ? camposDatosPersonales.nivelActividad.id : "",
-    camposDatosPersonales.objetivo ? camposDatosPersonales.objetivo.id : "",
-    camposDatosPersonales.tipoDieta ? camposDatosPersonales.tipoDieta.id : ""
-  ];
-  
+    camposDatosPersonales.fechaNacimiento?.id,
+    camposDatosPersonales.peso?.id,
+    camposDatosPersonales.sexo?.id,
+    camposDatosPersonales.altura?.id,
+    camposDatosPersonales.nivelActividad?.id,
+    camposDatosPersonales.objetivo?.id,
+    camposDatosPersonales.tipoDieta?.id
+  ].filter(id => id);
+
   camposParaRecalculo.forEach(id => {
     const campo = document.getElementById(id);
     if (campo) {
-      const evento = campo.tagName === "SELECT" ? "change" : "input";
-  
+      const evento = id === "input-fecha-nacimiento" ? "change" : (campo.tagName === "SELECT" ? "change" : "input");
       campo.addEventListener(evento, () => {
         calcularRecomendacionNutricional();
       });
     }
   });
+
 });
 
 function limpiarErrores(campos) {
@@ -159,7 +161,8 @@ async function cargarVistaAjustesDatosPersonales() {
   if (datos) {
     camposDatosPersonales.nombreUsuario.value = datos.nombreUsuario || "";
     camposDatosPersonales.email.value = datos.email || "";
-    camposDatosPersonales.edad.value = datos.edad || "";
+    camposDatosPersonales.fechaNacimiento.value = datos.fechaNacimiento || "";
+    camposDatosPersonales.sexo.value = datos.sexo || "";
     camposDatosPersonales.peso.value = datos.peso || "";
     camposDatosPersonales.altura.value = datos.altura || "";
 
@@ -179,6 +182,7 @@ async function cargarVistaAjustesDatosPersonales() {
 
   cargando(false);
 }
+
 
 function cambiarVista(vista, callback = null) {
   var titulo;
@@ -304,7 +308,7 @@ async function renderizarTablaMedidas() {
         tdAcciones.className = "p-2";
 
         const boton = document.createElement("button");
-        boton.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded";
+        boton.className = "bg-black-500 hover:bg-red-600 text-white px-3 py-1 rounded";
         boton.textContent = "Eliminar";
         boton.addEventListener("click", async () => {
           await eliminarMedida(medida.id);
@@ -336,11 +340,19 @@ async function renderizarComidas() {
   const fecha = document.getElementById("selector-calendario").value;
   const datos = await obtenerComidas(fecha);
   const personales = await obtenerDatosPersonales();
-  const comidasGuardadas = datos?.comidas || {};
-  const comidasActivas = personales?.cantidadComidas || 0;
+  const macrosAlmacenados = await obtenerMacrosAlmacenados(fecha);
 
-  // Obtener el número máximo entre comidas guardadas y activas actuales
-  const totalBloques = Math.max(Object.keys(comidasGuardadas).length, comidasActivas);
+  const comidasGuardadas = datos?.comidas || {};
+
+  const cantidadComidas = macrosAlmacenados?.cantidadComidasObjetivo || personales?.cantidadComidas || 0;
+
+  console.log("Comidas: " + cantidadComidas)
+  const carbosObjetivo = macrosAlmacenados?.carbosObjetivo || Number(personales?.carbohidratos) || 0;
+  const protesObjetivo = macrosAlmacenados?.protesObjetivo || Number(personales?.proteinas) || 0;
+  const grasasObjetivo = macrosAlmacenados?.grasasObjetivo || Number(personales?.grasas) || 0;
+  const kcalObjetivo = macrosAlmacenados?.kcalObjetivo || Number(personales?.kcalDiarias) || 0;
+
+  const totalBloques = cantidadComidas;
 
   for (let i = 1; i <= totalBloques; i++) {
     const nombreComida = `comida${i}`;
@@ -357,7 +369,6 @@ async function renderizarComidas() {
     titulo.textContent = `Comida ${i}`;
     header.appendChild(titulo);
 
-    // Botón de 3 puntos (menú)
     const menuBtn = document.createElement("button");
     menuBtn.className = "menu-comida-btn";
     menuBtn.innerHTML = "⋮";
@@ -380,7 +391,7 @@ async function renderizarComidas() {
         <th>P</th>
         <th>G</th>
         <th>Kcal</th>
-        <th>Acción</th>
+        <th>&nbsp;</th>
       </tr>
     `;
     tabla.appendChild(thead);
@@ -421,7 +432,6 @@ async function renderizarComidas() {
     const filaTotales = document.createElement("tr");
     filaTotales.className = "bg-gray-100 font-semibold";
     filaTotales.style = "background-color: #f7f7f7";
-
     filaTotales.innerHTML = `
       <td></td>
       <td>${totalCarbos.toFixed(1)}</td>
@@ -430,7 +440,6 @@ async function renderizarComidas() {
       <td>${totalKcal.toFixed(1)}</td>
       <td></td>
     `;
-
     tbody.appendChild(filaTotales);
 
     tabla.appendChild(tbody);
@@ -453,6 +462,9 @@ async function renderizarComidas() {
         const bloque = document.querySelector(`.bloque-comida:nth-child(${ultimaComidaEditada})`);
         if (bloque) {
           bloque.scrollIntoView({ behavior: "smooth", block: "start" });
+          setTimeout(() => {
+            window.scrollBy(0, -60);
+          }, 300);
         }
       }
       ultimaComidaEditada = null;
@@ -473,19 +485,20 @@ async function renderizarComidas() {
   });
 
   // Mostrar datos
-  document.getElementById("carbohidratos-dia").textContent = `${totalDiaCarbos.toFixed(1)} / ${(Number(personales.carbohidratos) || 0).toFixed(1)} g`;
-  document.getElementById("proteinas-dia").textContent = `${totalDiaProtes.toFixed(1)} / ${(Number(personales.proteinas) || 0).toFixed(1)} g`;
-  document.getElementById("grasas-dia").textContent = `${totalDiaGrasas.toFixed(1)} / ${(Number(personales.grasas) || 0).toFixed(1)} g`;
-  document.getElementById("kcal-dia").textContent = `${totalDiaKcal.toFixed(1)} / ${(Number(personales.kcalDiarias) || 0).toFixed(1)} kcal`;
+  document.getElementById("carbohidratos-dia").textContent = `${totalDiaCarbos.toFixed(1)} / ${carbosObjetivo.toFixed(1)} g`;
+  document.getElementById("proteinas-dia").textContent = `${totalDiaProtes.toFixed(1)} / ${protesObjetivo.toFixed(1)} g`;
+  document.getElementById("grasas-dia").textContent = `${totalDiaGrasas.toFixed(1)} / ${grasasObjetivo.toFixed(1)} g`;
+  document.getElementById("kcal-dia").textContent = `${totalDiaKcal.toFixed(1)} / ${kcalObjetivo.toFixed(1)} kcal`;
 
   // Actualizar barras
-  actualizarBarra("barra-carbohidratos", totalDiaCarbos, personales.carbohidratos || 1);
-  actualizarBarra("barra-proteinas", totalDiaProtes, personales.proteinas || 1);
-  actualizarBarra("barra-grasas", totalDiaGrasas, personales.grasas || 1);
-  actualizarBarra("barra-kcal", totalDiaKcal, personales.kcalDiarias || 1);
+  actualizarBarra("barra-carbohidratos", totalDiaCarbos, carbosObjetivo || 1);
+  actualizarBarra("barra-proteinas", totalDiaProtes, protesObjetivo || 1);
+  actualizarBarra("barra-grasas", totalDiaGrasas, grasasObjetivo || 1);
+  actualizarBarra("barra-kcal", totalDiaKcal, kcalObjetivo || 1);
 
   cargando(false);
 }
+
 
 function esAlimentoDuplicado(alimentoApi, listaLocales) {
   const normalizar = str => (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -1155,6 +1168,7 @@ function mostrarMenuOpciones(nombreComida, comidaIndex, boton, bloque) {
   menu.innerHTML = `
     <button onclick="copiarComida('${nombreComida}')">Copiar comida</button>
     <button onclick="pegarComida('${comidaIndex}')">Pegar comida</button>
+    <button onclick="vaciarComida('${comidaIndex}')">Vaciar comida</button>
   `;
 
   menu.style.position = "absolute";
@@ -1265,7 +1279,8 @@ function calcularRecomendacionNutricional(bloquearCampos) {
 
   // Validar campos requeridos
   const camposValidos = [
-    validarCampo(campos.edad),
+    validarCampo(campos.fechaNacimiento),
+    validarCampo(campos.sexo),
     validarCampo(campos.peso),
     validarCampo(campos.altura),
     validarCampo(campos.nivelActividad),
@@ -1301,14 +1316,18 @@ function calcularRecomendacionNutricional(bloquearCampos) {
   }
 
   // Calcular valores recomendados
-  const edad = parseInt(campos.edad.value);
+  const fechaNacimiento = parseInt(campos.fechaNacimiento.value);
   const peso = parseFloat(campos.peso.value);
+  const sexo = parseFloat(campos.sexo.value);
   const altura = parseFloat(campos.altura.value);
   const nivel = campos.nivelActividad.value;
   const objetivo = campos.objetivo.value;
   const tipoDieta = campos.tipoDieta.value;
 
-  const tmb = calcularTMB(peso, altura, edad);
+  console.log("SEX: " + calcularEdadDesdeFechaNacimiento(fechaNacimiento));
+
+
+  const tmb = calcularTMB(peso, altura, calcularEdadDesdeFechaNacimiento(fechaNacimiento), sexo);
   const factor = obtenerFactorActividad(nivel);
   const kcalTotales = ajustarKcalPorObjetivo(tmb * factor, objetivo);
   const macros = calcularMacros(peso, kcalTotales, tipoDieta);
@@ -1319,6 +1338,28 @@ function calcularRecomendacionNutricional(bloquearCampos) {
   campos.carbohidratos.value = macros.carbohidratos;
   campos.grasas.value = macros.grasas;
 }
+
+function calcularEdadDesdeFechaNacimiento(fechaNacimientoStr) {
+  if (!fechaNacimientoStr) return null;
+
+  // Si es solo un año, añade -01-01
+  if (/^\d{4}$/.test(fechaNacimientoStr)) {
+    fechaNacimientoStr = `${fechaNacimientoStr}-01-01`;
+  }
+
+  const hoy = new Date();
+  const fechaNacimiento = new Date(fechaNacimientoStr);
+
+  let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+  const mes = hoy.getMonth() - fechaNacimiento.getMonth();
+
+  if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNacimiento.getDate())) {
+    edad--;
+  }
+
+  return edad;
+}
+
 
 function validarCampo(campo) {
   if (!validacionActiva) return true;
@@ -1450,9 +1491,14 @@ window.addEventListener("resize", comprobarOrientacion);
 
 // Funciones de cálculo de KCAL
 
-function calcularTMB(peso, altura, edad) {
-  return 10 * peso + 6.25 * altura - 5 * edad + 5; // Hombre (puedo añadir versión mujer si lo necesitas)
+function calcularTMB(peso, altura, edad, sexo) {
+  if (sexo === 'mujer') {
+    return 10 * peso + 6.25 * altura - 5 * edad - 161;
+  } else {
+    return 10 * peso + 6.25 * altura - 5 * edad + 5;
+  }
 }
+
 
 function obtenerFactorActividad(nivel) {
   switch (nivel) {
@@ -1524,6 +1570,33 @@ function cargando(estado) {
 }
 
 
+async function vaciarComida(comidaIndex) {
+  const confirmacion = confirm("¿Seguro que quieres vaciar esta comida?");
+  if (!confirmacion) return;
+
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const fecha = document.getElementById("selector-calendario").value;
+  const nombreComida = `comida${comidaIndex}`.trim();
+  const alimentosRef = collection(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}/alimentos`);
+  const snapshot = await getDocs(alimentosRef);
+
+  if (snapshot.empty) {
+    alert("No hay alimentos para vaciar");
+    return;
+  }
+
+  cargando(true);
+  for (const doc of snapshot.docs) {
+    await eliminarAlimentoDeComida(doc.id, fecha, nombreComida);
+  }
+  cargando(true);
+  ultimaComidaEditada = Number(comidaIndex);
+  renderizarComidas();
+}
+
+window.vaciarComida = vaciarComida;
 
 
 

@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebas
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
   onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { getFirestore, doc, collection, addDoc, setDoc, getDocs, getDoc, 
-  deleteDoc, query, collectionGroup, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+  deleteDoc, query, collectionGroup, where, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 import { renderizarTablaMedidas, calcularTMB, obtenerFactorActividad, 
   ajustarKcalPorObjetivo, calcularMacros, cargarVista } from "./main.js";
@@ -293,12 +293,13 @@ export async function guardarDatosPersonales() {
     alert("Usuario no autenticado");
     return;
   }
-  
+
   // Datos personales
-  const nombreUsuario = document.getElementById("input-nombre-usuario")
-  const edad = document.getElementById("input-edad");
+  const nombreUsuario = document.getElementById("input-nombre-usuario");
+  const fechaNacimiento = document.getElementById("input-fecha-nacimiento");
   const peso = document.getElementById("input-peso");
-  const altura = document.getElementById("input-altura")
+  const altura = document.getElementById("input-altura");
+  const sexo = document.getElementById("input-sexo");
 
   // Objetivo
   const nivelActividad = document.getElementById("select-nivel-actividad");
@@ -313,14 +314,11 @@ export async function guardarDatosPersonales() {
   const carbohidratos = document.getElementById("input-carbohidratos");
   const grasas = document.getElementById("input-grasas");
 
-  if (!edad.value || !peso.value || !altura.value) {
-    if (!confirm("Si no rellenas la edad, la altura o el peso, no se calculará de manera automática la recomendación nutricional. ¿Quieres continuar igualmente?")) {
+  if (!fechaNacimiento.value || !peso.value || !altura.value || !sexo.value) {
+    if (!confirm("Si no rellenas la edad, la altura, el peso o el sexo, no se calculará de manera automática la recomendación nutricional. ¿Quieres continuar igualmente?")) {
       return;
     }
   }
-
-  parseFloat(edad.value) < edad.min || parseFloat(edad.value) > edad.max ?
-    alert(`La edad debe estar entre ${edad.min} y ${edad.max}`) : "";
 
   parseFloat(peso.value) < peso.min || parseFloat(peso.value) > peso.max ?
     alert(`El peso debe estar entre ${peso.min} y ${peso.max}`) : "";
@@ -339,7 +337,6 @@ export async function guardarDatosPersonales() {
     );
     const snapshot = await getDocs(q);
 
-    // Si ya existe y no es del usuario actual
     if (!snapshot.empty && snapshot.docs[0].ref.path !== `usuarios/${user.uid}/datos-personales/perfil`) {
       alert("Ese nombre de usuario ya está en uso.");
       loader.classList.add('oculto');
@@ -349,7 +346,8 @@ export async function guardarDatosPersonales() {
     const docRef = doc(db, `usuarios/${user.uid}/datos-personales/perfil`);
     await setDoc(docRef, {
       nombreUsuario: nombreUsuario.value,
-      edad: edad.value,
+      fechaNacimiento: fechaNacimiento.value,
+      sexo: sexo.value,
       peso: peso.value,
       altura: altura.value,
       nivelActividad: nivelActividad.value,
@@ -363,6 +361,8 @@ export async function guardarDatosPersonales() {
       grasas: grasas.value
     }, { merge: true });
 
+    await actualizarMacrosDelDiaSeleccionadoYFaltantes(new Date());
+
     console.log("Datos guardados con ID:", docRef.id);
 
     alert("Datos actualizados correctamente");
@@ -374,6 +374,7 @@ export async function guardarDatosPersonales() {
   }
 }
 
+
 export async function obtenerDatosPersonales() {
   const user = auth.currentUser;
   if (!user) return null;
@@ -382,9 +383,9 @@ export async function obtenerDatosPersonales() {
   const snapshot = await getDoc(datosPersonalesRef);
 
   if (!snapshot.exists()) {
-    console.log("Snapshot no existe...")
+    console.log("Snapshot no existe...");
     return null;
-  } 
+  }
 
   const data = snapshot.data();
 
@@ -392,7 +393,8 @@ export async function obtenerDatosPersonales() {
     id: snapshot.id,
     nombreUsuario: data.nombreUsuario,
     email: data.email,
-    edad: data.edad,
+    fechaNacimiento: data.fechaNacimiento,
+    sexo: data.sexo,
     peso: data.peso,
     altura: data.altura,
     nivelActividad: data.nivelActividad,
@@ -406,6 +408,7 @@ export async function obtenerDatosPersonales() {
     grasas: data.grasas
   };
 }
+
 
 export async function obtenerComidas(fecha) {
   const user = auth.currentUser;
@@ -426,7 +429,7 @@ export async function obtenerComidas(fecha) {
     snapshot.docs.map(async (docSnap) => {
       const nombreComida = docSnap.id;
       const alimentosRef = collection(docSnap.ref, "alimentos");
-      const alimentosSnap = await getDocs(alimentosRef);
+      const alimentosSnap = await getDocs(query(alimentosRef, orderBy("timestamp")));
       const alimentos = alimentosSnap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -586,7 +589,7 @@ export async function registrarAlimentoAComida(alimento, comidaIndex) {
 
   if (comidaIndex === null || comidaIndex == "" || comidaIndex === undefined) {
     alert("Error al añadir alimento a comida");
-    return ;
+    return;
   }
 
   const alimentoLimpio = {
@@ -595,17 +598,89 @@ export async function registrarAlimentoAComida(alimento, comidaIndex) {
     protes: Math.round((alimento.protes || 0) * 10) / 10,
     grasas: Math.round((alimento.grasas || 0) * 10) / 10,
     kcal: Math.round((alimento.kcal || 0) * 10) / 10,
-    peso: Math.round((alimento.peso || 0) * 10) / 10
+    peso: Math.round((alimento.peso || 0) * 10) / 10,
+    timestamp: new Date().toISOString() // o Timestamp.now() si usas Firestore Timestamp
   };
 
   const docComidaRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}`);
-  await setDoc(docComidaRef, {}, { merge: true }); // 👈 asegura que exista comida1
+  await setDoc(docComidaRef, {}, { merge: true });
 
   const colRef = collection(docComidaRef, "alimentos");
   const ref = await addDoc(colRef, alimentoLimpio);
+  await actualizarMacrosDelDiaSeleccionadoYFaltantes();
 
-  console.log("✅ Alimento guardado:", colRef.path, "→ ID:", ref.id);
+  // Guardar macros objetivo y número de comidas si es el día actual
+  const fechaHoy = new Date().toISOString().split('T')[0];
+  if (fecha === fechaHoy) {
+    const personales = await obtenerDatosPersonales();
+    if (personales) {
+      const macrosRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
+      await setDoc(macrosRef, {
+        carbosObjetivo: Number(personales.carbohidratos) || 0,
+        protesObjetivo: Number(personales.proteinas) || 0,
+        grasasObjetivo: Number(personales.grasas) || 0,
+        kcalObjetivo: Number(personales.kcalDiarias) || 0,
+        cantidadComidasObjetivo: Number(personales.cantidadComidas) || 0
+      }, { merge: true });
+    }
+  }
 }
+
+export async function obtenerMacrosAlmacenados(fecha) {
+  const user = auth.currentUser;
+  if (!user || !fecha) return null;
+
+  const ref = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
+
+  const snapshot = await getDoc(ref);
+
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  const data = snapshot.data();
+  return {
+    carbosObjetivo: data.carbosObjetivo,
+    protesObjetivo: data.protesObjetivo,
+    grasasObjetivo: data.grasasObjetivo,
+    kcalObjetivo: data.kcalObjetivo,
+    cantidadComidasObjetivo: data.cantidadComidasObjetivo
+  };
+}
+
+
+
+async function actualizarMacrosDelDia(uid, fecha) {
+  const baseRef = collection(db, `usuarios/${uid}/comidas/${fecha}/comidas`);
+  const snapshot = await getDocs(baseRef);
+
+  let totalCarbos = 0;
+  let totalProtes = 0;
+  let totalGrasas = 0;
+  let totalKcal = 0;
+
+  for (const docSnap of snapshot.docs) {
+    const alimentosRef = collection(docSnap.ref, "alimentos");
+    const alimentosSnap = await getDocs(alimentosRef);
+    alimentosSnap.forEach(doc => {
+      const al = doc.data();
+      totalCarbos += al.carbos || 0;
+      totalProtes += al.protes || 0;
+      totalGrasas += al.grasas || 0;
+      totalKcal += al.kcal || 0;
+    });
+  }
+
+  const macrosRef = doc(db, `usuarios/${uid}/comidas/${fecha}/comidas/macros`);
+  await setDoc(macrosRef, {
+    carbos: Math.round(totalCarbos * 10) / 10,
+    protes: Math.round(totalProtes * 10) / 10,
+    grasas: Math.round(totalGrasas * 10) / 10,
+    kcal: Math.round(totalKcal * 10) / 10
+  }, { merge: true });
+}
+
+
 
 export async function actualizarAlimentoDeComida(alimento, nombreComida) {
   const user = auth.currentUser;
@@ -629,6 +704,7 @@ export async function actualizarAlimentoDeComida(alimento, nombreComida) {
   };
 
   await updateDoc(docRef, alimentoActualizado);
+  await actualizarMacrosDelDiaSeleccionadoYFaltantes();
 }
 
 
@@ -639,6 +715,7 @@ export async function eliminarAlimentoDeComida(id, fecha, nombreComida) {
   try {
     const ref = doc(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}/alimentos/${id}`);
     await deleteDoc(ref);
+    await actualizarMacrosDelDiaSeleccionadoYFaltantes();
   } catch (error) {
     console.error("Error al eliminar el alimento:", error);
     alert("Hubo un error al eliminar el alimento.");
@@ -711,6 +788,72 @@ onAuthStateChanged(auth, (user) => {
 });
 
 export { auth };
+
+
+async function actualizarMacrosDelDiaSeleccionadoYFaltantes(fechaAuxiliar) {
+  const user = auth.currentUser;
+  if (!user) {
+    console.warn("No hay usuario autenticado");
+    return;
+  }
+
+  const personales = await obtenerDatosPersonales();
+  if (!personales) {
+    console.warn("No se pudieron obtener datos personales");
+    return;
+  }
+
+  const fechaSeleccionada = fechaAuxiliar ? formatearFecha(fechaAuxiliar) : document.getElementById("selector-calendario").value;
+
+  console.log("Fecha: " + fechaSeleccionada );
+
+  const fechasRef = collection(db, `usuarios/${user.uid}/comidas`);
+  const snapshot = await getDocs(fechasRef);
+
+  for (const docSnap of snapshot.docs) {
+    const fecha = docSnap.id;
+    const macrosRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
+    const macrosSnap = await getDoc(macrosRef);
+
+    const datosMacros = {
+      carbosObjetivo: Number(personales.carbohidratos) || 0,
+      protesObjetivo: Number(personales.proteinas) || 0,
+      grasasObjetivo: Number(personales.grasas) || 0,
+      kcalObjetivo: Number(personales.kcalDiarias) || 0,
+      cantidadComidasObjetivo: Number(personales.cantidadComidas) || 0
+    };
+
+    if (fecha === fechaSeleccionada) {
+      // Siempre actualiza la fecha seleccionada
+      await setDoc(macrosRef, datosMacros, { merge: true });
+      console.log(`✅ Macros actualizados para el día seleccionado: ${fecha}`);
+    } else if (fecha < fechaSeleccionada) {
+      // Solo actualiza días pasados si les faltan campos
+      const data = macrosSnap.data() || {};
+      const camposMacros = ["carbosObjetivo", "protesObjetivo", "grasasObjetivo", "kcalObjetivo", "cantidadComidasObjetivo"];
+      const faltanCampos = camposMacros.some(campo => !(campo in data));
+
+      if (faltanCampos) {
+        await setDoc(macrosRef, datosMacros, { merge: true });
+      }
+    }
+  }
+
+  console.log("🎉 Proceso completado: macros actualizados");
+}
+
+function formatearFecha(date) {
+  if (!(date instanceof Date) || isNaN(date)) {
+    console.warn("⚠️ formatearFecha recibió un valor inválido:", date);
+    return null;
+  }
+
+  const anio = date.getFullYear();
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const dia = String(date.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}
+
 
 
 
