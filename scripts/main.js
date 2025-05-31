@@ -347,10 +347,25 @@ async function renderizarComidas() {
     const bloque = document.createElement("div");
     bloque.className = "bloque-comida";
 
+    const header = document.createElement("div");
+    header.className = "titulo-comida-header";
+
     const titulo = document.createElement("h3");
     titulo.className = "titulo-comida";
     titulo.textContent = `Comida ${i}`;
-    bloque.appendChild(titulo);
+    header.appendChild(titulo);
+
+    // Botón de 3 puntos (menú)
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "menu-comida-btn";
+    menuBtn.innerHTML = "⋮";
+    menuBtn.onclick = (e) => {
+      e.stopPropagation();
+      mostrarMenuOpciones(nombreComida, i, e.currentTarget, bloque);
+    };
+    header.appendChild(menuBtn);
+
+    bloque.appendChild(header);
 
     const tabla = document.createElement("table");
     tabla.className = "tabla-alimentos";
@@ -483,6 +498,10 @@ async function borrarAlimentoDeComida(id, fecha, nombreComida) {
 
 window.borrarAlimentoDeComida = borrarAlimentoDeComida;
 window.abrirModalSeleccionPeso = abrirModalSeleccionPeso;
+
+window.copiarComida = copiarComida;
+window.pegarComida = pegarComida;
+
 
 
 async function abrirModalAlimentos(comida) {
@@ -1109,6 +1128,77 @@ function borrarAlimento(id, comida) {
 
   abrirModalAlimentos(comida);
 }
+
+
+// Cierra cualquier menú abierto antes de crear uno nuevo
+function cerrarMenuGlobal() {
+  document.querySelectorAll(".menu-opciones").forEach(menu => menu.remove());
+}
+
+function mostrarMenuOpciones(nombreComida, comidaIndex, boton, bloque) {
+  cerrarMenuGlobal(); // Cierra cualquier otro menú
+
+  const menu = document.createElement("div");
+  menu.className = "menu-opciones";
+  menu.innerHTML = `
+    <button onclick="copiarComida('${nombreComida}')">Copiar comida</button>
+    <button onclick="pegarComida('${comidaIndex}')">Pegar comida</button>
+  `;
+
+  menu.style.position = "absolute";
+  const rect = boton.getBoundingClientRect();
+  const bloqueRect = bloque.getBoundingClientRect();
+  const offsetTop = rect.bottom - bloqueRect.top;
+  let offsetLeft = rect.left - bloqueRect.left;
+
+  const menuWidth = 150;
+  if (rect.left + menuWidth > window.innerWidth) {
+    offsetLeft = rect.right - bloqueRect.left - menuWidth;
+  }
+
+  menu.style.top = `${offsetTop}px`;
+  menu.style.left = `${offsetLeft}px`;
+
+  bloque.style.position = "relative";
+  bloque.appendChild(menu);
+}
+
+// Cerrar el menú si haces scroll o clic en cualquier parte
+document.addEventListener("click", cerrarMenuGlobal);
+window.addEventListener("scroll", cerrarMenuGlobal, { passive: true });
+
+
+let comidaCopiada = null;
+
+async function copiarComida(nombreComida) {
+  const fecha = document.getElementById("selector-calendario").value;
+  const datos = await obtenerComidas(fecha);
+
+  if (!datos || !datos.comidas || !datos.comidas[nombreComida]) {
+    return;
+  }
+
+  comidaCopiada = datos.comidas[nombreComida];
+  console.log("✅ Comida copiada:", comidaCopiada);
+  alert("Comida copiada");
+  document.querySelector(".menu-opciones")?.remove();
+}
+
+
+async function pegarComida(destinoIndex) {
+  if (!comidaCopiada || comidaCopiada.length === 0) {
+    return;
+  }
+
+  for (let alimento of comidaCopiada) {
+    await registrarAlimentoAComida(alimento, destinoIndex);
+  }
+
+  alert("Comida pegada");
+  document.querySelector(".menu-opciones")?.remove();
+  renderizarComidas(); // Recargar la vista
+}
+
 
 function calcularRecomendacionNutricionalAutomatica() {
   console.log(camposDatosPersonales.recomendacionNutricionalAutomatica.checked)

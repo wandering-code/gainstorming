@@ -3,12 +3,14 @@ self.addEventListener('install', e => {
       caches.open('gym-app-cache').then(cache => {
         return cache.addAll([
           './',
-          './index.html',
-          './styles.css',
-          './script.js',
-          './manifest.json',
-          './icon-192.png',
-          './icon-512.png'
+          '../index.html',
+          '../styles/phone.css',
+          '../styles/pc.css',
+          './main.js',
+          './sessionManager.js',
+          './dataBaseManager.js',
+          '../manifest.json',
+          '../images/logos/onlygains-logo.png'
         ]);
       })
     );
@@ -20,5 +22,13 @@ self.addEventListener('install', e => {
         return response || fetch(e.request);
       })
     );
+  });
+
+  self.addEventListener('activate', (event) => {
+    console.log('[ServiceWorker] Activated');
+  });
+  
+  self.addEventListener('fetch', (event) => {
+    console.log('[ServiceWorker] Fetching:', event.request.url);
   });
   
