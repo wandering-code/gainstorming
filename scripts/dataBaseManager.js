@@ -91,6 +91,7 @@ window.login = async () => {
       collectionGroup(db, "datos-personales"),
       where("nombreUsuario", "==", entrada)
     );
+    console.log("Buscando nombre de usuario en collectionGroup...");
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
@@ -101,6 +102,7 @@ window.login = async () => {
 
     const path = snapshot.docs[0].ref.path;
     const uid = path.split("/")[1]; // extraer el UID del path
+    console.log("Buscando perfil...");
     const userRef = await getDoc(doc(db, `usuarios/${uid}/datos-personales/perfil`));
     const userData = userRef.data();
 
@@ -580,14 +582,14 @@ export async function obtenerAlimentos(texto) {
   });
 }
 
-export async function registrarAlimentoAComida(alimento, comidaIndex) {
+export async function registrarAlimentoAComida(alimento, comidaIndex, actualizarMacros) {
   const user = auth.currentUser;
   if (!user) return;
 
   const fecha = document.getElementById("selector-calendario").value;
   const nombreComida = `comida${comidaIndex}`.trim();
 
-  if (comidaIndex === null || comidaIndex == "" || comidaIndex === undefined) {
+  if (comidaIndex === null || comidaIndex === "" || comidaIndex === undefined) {
     alert("Error al añadir alimento a comida");
     return;
   }
@@ -599,19 +601,27 @@ export async function registrarAlimentoAComida(alimento, comidaIndex) {
     grasas: Math.round((alimento.grasas || 0) * 10) / 10,
     kcal: Math.round((alimento.kcal || 0) * 10) / 10,
     peso: Math.round((alimento.peso || 0) * 10) / 10,
-    timestamp: new Date().toISOString() // o Timestamp.now() si usas Firestore Timestamp
+    timestamp: new Date().toISOString()
   };
 
+  console.time("Total registrarAlimentoAComida");
+
   const docComidaRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}/comidas/${nombreComida}`);
-  await setDoc(docComidaRef, {}, { merge: true });
 
-  const colRef = collection(docComidaRef, "alimentos");
-  const ref = await addDoc(colRef, alimentoLimpio);
-  await actualizarMacrosDelDiaSeleccionadoYFaltantes();
+  console.time("setDoc vacío + addDoc alimento");
+  await Promise.all([
+    setDoc(docComidaRef, {}, { merge: true }),
+    addDoc(collection(docComidaRef, "alimentos"), alimentoLimpio)
+  ]);
+  console.timeEnd("setDoc vacío + addDoc alimento");
 
-  // Guardar macros objetivo y número de comidas si es el día actual
+  if (actualizarMacros) {
+    await actualizarMacrosDelDiaSeleccionadoYFaltantes();
+  }
+
   const fechaHoy = new Date().toISOString().split('T')[0];
   if (fecha === fechaHoy) {
+    console.time("obtenerDatosPersonales + set macros objetivo");
     const personales = await obtenerDatosPersonales();
     if (personales) {
       const macrosRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
@@ -623,8 +633,12 @@ export async function registrarAlimentoAComida(alimento, comidaIndex) {
         cantidadComidasObjetivo: Number(personales.cantidadComidas) || 0
       }, { merge: true });
     }
+    console.timeEnd("obtenerDatosPersonales + set macros objetivo");
   }
+
+  console.timeEnd("Total registrarAlimentoAComida");
 }
+
 
 export async function obtenerMacrosAlmacenados(fecha) {
   const user = auth.currentUser;
@@ -797,50 +811,52 @@ async function actualizarMacrosDelDiaSeleccionadoYFaltantes(fechaAuxiliar) {
     return;
   }
 
+  console.time("actualizarMacros: obtenerDatosPersonales");
   const personales = await obtenerDatosPersonales();
+  console.timeEnd("actualizarMacros: obtenerDatosPersonales");
+
   if (!personales) {
     console.warn("No se pudieron obtener datos personales");
     return;
   }
 
   const fechaSeleccionada = fechaAuxiliar ? formatearFecha(fechaAuxiliar) : document.getElementById("selector-calendario").value;
+  console.log("Fecha: " + fechaSeleccionada);
 
-  console.log("Fecha: " + fechaSeleccionada );
-
+  console.time("actualizarMacros: getDocs fechasRef");
   const fechasRef = collection(db, `usuarios/${user.uid}/comidas`);
   const snapshot = await getDocs(fechasRef);
+  console.timeEnd("actualizarMacros: getDocs fechasRef");
 
-  for (const docSnap of snapshot.docs) {
+  const datosMacros = {
+    carbosObjetivo: Number(personales.carbohidratos) || 0,
+    protesObjetivo: Number(personales.proteinas) || 0,
+    grasasObjetivo: Number(personales.grasas) || 0,
+    kcalObjetivo: Number(personales.kcalDiarias) || 0,
+    cantidadComidasObjetivo: Number(personales.cantidadComidas) || 0
+  };
+  const promesas = snapshot.docs.map(async (docSnap) => {
     const fecha = docSnap.id;
     const macrosRef = doc(db, `usuarios/${user.uid}/comidas/${fecha}`);
-    const macrosSnap = await getDoc(macrosRef);
-
-    const datosMacros = {
-      carbosObjetivo: Number(personales.carbohidratos) || 0,
-      protesObjetivo: Number(personales.proteinas) || 0,
-      grasasObjetivo: Number(personales.grasas) || 0,
-      kcalObjetivo: Number(personales.kcalDiarias) || 0,
-      cantidadComidasObjetivo: Number(personales.cantidadComidas) || 0
-    };
 
     if (fecha === fechaSeleccionada) {
-      // Siempre actualiza la fecha seleccionada
       await setDoc(macrosRef, datosMacros, { merge: true });
       console.log(`✅ Macros actualizados para el día seleccionado: ${fecha}`);
     } else if (fecha < fechaSeleccionada) {
-      // Solo actualiza días pasados si les faltan campos
+      const macrosSnap = await getDoc(macrosRef);
       const data = macrosSnap.data() || {};
-      const camposMacros = ["carbosObjetivo", "protesObjetivo", "grasasObjetivo", "kcalObjetivo", "cantidadComidasObjetivo"];
-      const faltanCampos = camposMacros.some(campo => !(campo in data));
+      const faltanCampos = ["carbosObjetivo", "protesObjetivo", "grasasObjetivo", "kcalObjetivo", "cantidadComidasObjetivo"]
+        .some(campo => !(campo in data));
 
       if (faltanCampos) {
         await setDoc(macrosRef, datosMacros, { merge: true });
       }
     }
-  }
+  });
 
-  console.log("🎉 Proceso completado: macros actualizados");
+  await Promise.all(promesas);
 }
+
 
 function formatearFecha(date) {
   if (!(date instanceof Date) || isNaN(date)) {

@@ -333,28 +333,33 @@ async function renderizarTablaMedidas() {
 }
 
 async function renderizarComidas() {
+  console.time("renderizarComidas: total");
   cargando(true);
   const contenedor = document.getElementById("contenedor-comidas");
   contenedor.innerHTML = "";
 
   const fecha = document.getElementById("selector-calendario").value;
-  const datos = await obtenerComidas(fecha);
-  const personales = await obtenerDatosPersonales();
-  const macrosAlmacenados = await obtenerMacrosAlmacenados(fecha);
+
+  console.time("renderizarComidas: obtener datos");
+  const [datos, personales, macrosAlmacenados] = await Promise.all([
+    obtenerComidas(fecha),
+    obtenerDatosPersonales(),
+    obtenerMacrosAlmacenados(fecha)
+  ]);
+  console.timeEnd("renderizarComidas: obtener datos");
 
   const comidasGuardadas = datos?.comidas || {};
-
   const cantidadComidas = macrosAlmacenados?.cantidadComidasObjetivo || personales?.cantidadComidas || 0;
 
-  console.log("Comidas: " + cantidadComidas)
+  console.log("Comidas: " + cantidadComidas);
+
   const carbosObjetivo = macrosAlmacenados?.carbosObjetivo || Number(personales?.carbohidratos) || 0;
   const protesObjetivo = macrosAlmacenados?.protesObjetivo || Number(personales?.proteinas) || 0;
   const grasasObjetivo = macrosAlmacenados?.grasasObjetivo || Number(personales?.grasas) || 0;
   const kcalObjetivo = macrosAlmacenados?.kcalObjetivo || Number(personales?.kcalDiarias) || 0;
 
-  const totalBloques = cantidadComidas;
-
-  for (let i = 1; i <= totalBloques; i++) {
+  console.time("renderizarComidas: generar bloques");
+  for (let i = 1; i <= cantidadComidas; i++) {
     const nombreComida = `comida${i}`;
     const alimentos = comidasGuardadas[nombreComida] || [];
 
@@ -470,34 +475,32 @@ async function renderizarComidas() {
       ultimaComidaEditada = null;
     });
   }
+  console.timeEnd("renderizarComidas: generar bloques");
 
-  // Totales globales del día
-  let totalDiaCarbos = 0;
-  let totalDiaProtes = 0;
-  let totalDiaGrasas = 0;
-  let totalDiaKcal = 0;
-
+  console.time("renderizarComidas: totales globales");
+  let totalDiaCarbos = 0, totalDiaProtes = 0, totalDiaGrasas = 0, totalDiaKcal = 0;
   Object.values(comidasGuardadas).forEach(alimentos => {
     totalDiaCarbos += alimentos.reduce((sum, al) => sum + (al.carbos || 0), 0);
     totalDiaProtes += alimentos.reduce((sum, al) => sum + (al.protes || 0), 0);
     totalDiaGrasas += alimentos.reduce((sum, al) => sum + (al.grasas || 0), 0);
     totalDiaKcal += alimentos.reduce((sum, al) => sum + (al.kcal || 0), 0);
   });
+  console.timeEnd("renderizarComidas: totales globales");
 
-  // Mostrar datos
   document.getElementById("carbohidratos-dia").textContent = `${totalDiaCarbos.toFixed(1)} / ${carbosObjetivo.toFixed(1)} g`;
   document.getElementById("proteinas-dia").textContent = `${totalDiaProtes.toFixed(1)} / ${protesObjetivo.toFixed(1)} g`;
   document.getElementById("grasas-dia").textContent = `${totalDiaGrasas.toFixed(1)} / ${grasasObjetivo.toFixed(1)} g`;
   document.getElementById("kcal-dia").textContent = `${totalDiaKcal.toFixed(1)} / ${kcalObjetivo.toFixed(1)} kcal`;
 
-  // Actualizar barras
   actualizarBarra("barra-carbohidratos", totalDiaCarbos, carbosObjetivo || 1);
   actualizarBarra("barra-proteinas", totalDiaProtes, protesObjetivo || 1);
   actualizarBarra("barra-grasas", totalDiaGrasas, grasasObjetivo || 1);
   actualizarBarra("barra-kcal", totalDiaKcal, kcalObjetivo || 1);
 
   cargando(false);
+  console.timeEnd("renderizarComidas: total");
 }
+
 
 
 function esAlimentoDuplicado(alimentoApi, listaLocales) {
@@ -530,22 +533,27 @@ window.pegarComida = pegarComida;
 
 
 async function abrirModalAlimentos(comida) {
+  console.time("abrirModalAlimentos: total");
   cargando(true);
 
   const modal = document.getElementById("modal-registro-alimento");
   modal.classList.remove("oculto");
 
-  document.getElementById("btn-escanear").onclick = () => {
+  const btnEscanear = document.getElementById("btn-escanear");
+  const btnManual = document.getElementById("btn-manual");
+  const btnCerrar = document.getElementById("btn-cerrar-modal");
+
+  btnEscanear.onclick = () => {
     cargando(false);
     escanearAlimento(comida);
   };
 
-  document.getElementById("btn-manual").onclick = () => {
+  btnManual.onclick = () => {
     cargando(false);
     añadirAlimento(null, comida);
   };
 
-  document.getElementById("btn-cerrar-modal").onclick = () => {
+  btnCerrar.onclick = () => {
     modal.classList.add("oculto");
     cargando(false);
   };
@@ -564,7 +572,6 @@ async function abrirModalAlimentos(comida) {
   buscador.className = "buscador-alimentos";
   searchContainer.appendChild(buscador);
 
-  // 🔥 Slider para activar/desactivar búsqueda en API
   const apiToggleContainer = document.createElement("div");
   apiToggleContainer.classList.add("api-toggle");
 
@@ -603,56 +610,42 @@ async function abrirModalAlimentos(comida) {
     const texto = buscador.value.trim();
     const buscarEnApi = apiToggle.checked;
     cargando(true);
-    
+
     console.time("Tiempo total búsqueda");
-    console.log("[DEBUG] Texto de búsqueda:", texto);
-    console.log("[DEBUG] Búsqueda en API activada:", buscarEnApi);
-  
     tbody.innerHTML = "";
-  
+
+    let resultadosLocal = [];
+
     if (!texto) {
-      console.log("[DEBUG] Texto vacío, cargando solo alimentos locales");
-      const alimentos = await obtenerAlimentos();
-      console.log("[DEBUG] Alimentos locales cargados:", alimentos.length);
-      alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
-      alimentos.forEach(alimento => {
-        const fila = crearFilaAlimento(alimento, comida, false);
-        tbody.appendChild(fila);
-      });
-      cargando(false);
-      console.timeEnd("Tiempo total búsqueda");
-      return;
+      resultadosLocal = await obtenerAlimentos();
+    } else {
+      console.time("Tiempo búsqueda Firebase");
+      resultadosLocal = await obtenerAlimentos(texto);
+      console.timeEnd("Tiempo búsqueda Firebase");
     }
-  
-    console.time("Tiempo búsqueda Firebase");
-    const resultadosLocal = await obtenerAlimentos(texto);
-    console.log("[DEBUG] Resultados locales encontrados:", resultadosLocal.length);
-    console.timeEnd("Tiempo búsqueda Firebase");
-  
+
     resultadosLocal.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const fragmentoLocal = document.createDocumentFragment();
     resultadosLocal.forEach(alimento => {
       const fila = crearFilaAlimento(alimento, comida, false);
-      tbody.appendChild(fila);
+      fragmentoLocal.appendChild(fila);
     });
-  
-    if (buscarEnApi) {
+    tbody.appendChild(fragmentoLocal);
+
+    if (buscarEnApi && texto) {
       console.time("Tiempo búsqueda API externa");
       try {
         const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(texto)}&search_simple=1&action=process&json=1&page_size=10`;
-        console.log("[DEBUG] URL de búsqueda API:", url);
-  
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000); // 5 segundos
-  
-        try {
-          const res = await fetch(url, { signal: controller.signal });
-          clearTimeout(timeout);
-          console.log("[DEBUG] Estado respuesta API:", res.status);
-  
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (res.ok) {
           const data = await res.json();
-          console.log("[DEBUG] Número de productos recibidos:", data.products ? data.products.length : 0);
-  
           if (data.products) {
+            const fragmentoApi = document.createDocumentFragment();
             data.products.forEach(p => {
               const n = p.nutriments || {};
               const alimentoExterno = {
@@ -664,40 +657,46 @@ async function abrirModalAlimentos(comida) {
                 kcal: n["energy-kcal_100g"] || 0,
                 externo: true
               };
-  
               if (!esAlimentoDuplicado(alimentoExterno, resultadosLocal)) {
                 const fila = crearFilaAlimento(alimentoExterno, comida, true);
                 fila.style.backgroundColor = "#f0f0f0";
-                tbody.appendChild(fila);
+                fragmentoApi.appendChild(fila);
               }
             });
+            tbody.appendChild(fragmentoApi);
           }
-        } catch (e) {
-          if (e.name === "AbortError") {
-            console.warn("[DEBUG] Timeout: La API tardó demasiado, abortada");
-          } else {
-            console.error("[DEBUG] Error al consultar API externa", e);
-          }
+        } else {
+          console.warn("[DEBUG] Respuesta API no OK:", res.status);
         }
       } catch (e) {
-        console.error("[DEBUG] Error al configurar fetch de API externa", e);
+        if (e.name === "AbortError") {
+          console.warn("[DEBUG] Timeout: API abortada");
+        } else {
+          console.error("[DEBUG] Error al consultar API externa", e);
+        }
       }
       console.timeEnd("Tiempo búsqueda API externa");
     }
-  
+
     cargando(false);
     console.timeEnd("Tiempo total búsqueda");
-  }, 300));  
-  
+  }, 300));
+
+  console.time("abrirModalAlimentos: carga inicial alimentos");
   const alimentos = await obtenerAlimentos();
   alimentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const fragmentoInicial = document.createDocumentFragment();
   alimentos.forEach(alimento => {
     const fila = crearFilaAlimento(alimento, comida, false);
-    tbody.appendChild(fila);
+    fragmentoInicial.appendChild(fila);
   });
+  tbody.appendChild(fragmentoInicial);
+  console.timeEnd("abrirModalAlimentos: carga inicial alimentos");
 
   cargando(false);
+  console.timeEnd("abrirModalAlimentos: total");
 }
+
 
 
 
@@ -1200,13 +1199,15 @@ async function copiarComida(nombreComida) {
   const fecha = document.getElementById("selector-calendario").value;
   const datos = await obtenerComidas(fecha);
 
-  if (!datos || !datos.comidas || !datos.comidas[nombreComida]) {
-    return;
-  }
+  const comidas = datos?.comidas;
+  const alimentos = comidas?.[nombreComida];
 
-  comidaCopiada = datos.comidas[nombreComida];
+  if (!Array.isArray(alimentos) || alimentos.length === 0) return;
+
+  comidaCopiada = alimentos.map(al => ({ ...al })); // copia profunda
   document.querySelector(".menu-opciones")?.remove();
 }
+
 
 
 async function pegarComida(destinoIndex) {
@@ -1588,13 +1589,20 @@ async function vaciarComida(comidaIndex) {
   }
 
   cargando(true);
-  for (const doc of snapshot.docs) {
-    await eliminarAlimentoDeComida(doc.id, fecha, nombreComida);
+
+  try {
+    const eliminaciones = snapshot.docs.map(doc => eliminarAlimentoDeComida(doc.id, fecha, nombreComida));
+    await Promise.all(eliminaciones);
+  } catch (e) {
+    console.error("Error al vaciar comida:", e);
+    alert("Ocurrió un error al vaciar la comida.");
   }
-  cargando(true);
+
   ultimaComidaEditada = Number(comidaIndex);
-  renderizarComidas();
+  await renderizarComidas();
+  cargando(false);
 }
+
 
 window.vaciarComida = vaciarComida;
 
